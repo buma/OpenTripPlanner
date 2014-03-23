@@ -13,6 +13,7 @@ otp.config = {
     hostname : "",
     //municoderHostname : "http://localhost:8080",
     //datastoreUrl : 'http://localhost:9000',
+    restService : "opentripplanner-api-webapp",
 
 
     /**
@@ -96,6 +97,10 @@ otp.config = {
         {
             id : 'analyst',
             className : 'otp.modules.analyst.AnalystModule',
+        },
+        {
+            id : 'bikeshare',
+            className: 'otp.modules.bikeshare.BikeShareModule',
         }
     ],
     

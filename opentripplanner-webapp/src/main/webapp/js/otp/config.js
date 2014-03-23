@@ -9,7 +9,7 @@
 // step 1: make sure we have some type of otp.config, and otp.config.local defined
 if(typeof(otp) == "undefined" || otp == null) otp = {};
 if(typeof(otp.config) == "undefined" || otp.config == null) otp.config = {};
-if(typeof(otp.config.locale) == "undefined" || otp.config.locale == null) otp.config.locale = otp.locale.English;
+if(typeof(otp.config.locale) == "undefined" || otp.config.locale == null) otp.config.locale = otp.locale.Slovenian;
 
 /* UNCOMMNET the following to have default fares in the UI -- note: routing engine fares take precedence 
 otp.config.default_fares = {
