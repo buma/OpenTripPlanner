@@ -74,6 +74,8 @@ import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
 import com.vividsolutions.jts.geom.Envelope;
+import de.ruedigermoeller.serialization.FSTObjectInput;
+import de.ruedigermoeller.serialization.FSTObjectOutput;
 
 /**
  * A graph is really just one or more indexes into a set of vertexes. It used to keep edgelists for each vertex, but those are in the vertex now.
@@ -450,7 +452,7 @@ public class Graph implements Serializable {
     public static Graph load(ClassLoader classLoader, File file, LoadLevel level)
             throws IOException, ClassNotFoundException {
         LOG.info("Reading graph " + file.getAbsolutePath() + " with alternate classloader ...");
-        ObjectInputStream in = new GraphObjectInputStream(new BufferedInputStream(
+        FSTObjectInput in = new GraphObjectInputStream(new BufferedInputStream(
                 new FileInputStream(file)), classLoader);
         return load(in, level);
     }
@@ -542,6 +544,8 @@ public class Graph implements Serializable {
         } catch (InvalidClassException ex) {
             LOG.error("Stored graph is incompatible with this version of OTP, please rebuild it.");
             throw new IllegalStateException("Stored Graph version error", ex);
+        } finally {
+            in.close();
         }
     }
 
@@ -581,7 +585,7 @@ public class Graph implements Serializable {
     public void save(File file) throws IOException {
         LOG.info("Main graph size: |V|={} |E|={}", this.countVertices(), this.countEdges());
         LOG.info("Writing graph " + file.getAbsolutePath() + " ...");
-        ObjectOutputStream out = new ObjectOutputStream(new BufferedOutputStream(
+        FSTObjectOutput out = new FSTObjectOutput(new BufferedOutputStream(
                 new FileOutputStream(file)));
         try {
             save(out);
@@ -593,7 +597,7 @@ public class Graph implements Serializable {
         }
     }
 
-    public void save(ObjectOutputStream out) throws IOException {
+    public void save(FSTObjectOutput out) throws IOException {
         LOG.debug("Consolidating edges...");
         // this is not space efficient
         List<Edge> edges = new ArrayList<Edge>(this.countEdges());
@@ -618,11 +622,12 @@ public class Graph implements Serializable {
         } else {
             LOG.debug("Skipping debug data.");
         }
+        out.close();
         LOG.info("Graph written.");
     }
 
     /* deserialization for org.opentripplanner.customize */
-    private static class GraphObjectInputStream extends ObjectInputStream {
+    private static class GraphObjectInputStream extends FSTObjectInput {
         ClassLoader classLoader;
 
         public GraphObjectInputStream(InputStream in, ClassLoader classLoader) throws IOException {
@@ -630,7 +635,7 @@ public class Graph implements Serializable {
             this.classLoader = classLoader;
         }
 
-        @Override
+        //@Override
         public Class<?> resolveClass(ObjectStreamClass osc) {
             try {
                 return Class.forName(osc.getName(), false, classLoader);
