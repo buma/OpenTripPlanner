@@ -74,6 +74,9 @@ import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
 import com.vividsolutions.jts.geom.Envelope;
+import org.mapdb.DB;
+import org.mapdb.DBMaker;
+import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 
 /**
  * A graph is really just one or more indexes into a set of vertexes. It used to keep edgelists for each vertex, but those are in the vertex now.
@@ -126,6 +129,7 @@ public class Graph implements Serializable {
 
     private transient TimeZone timeZone = null;
     
+    private transient static DB db;
     /**
      * Makes it possible to embed a default configuration inside a graph.
      * 
@@ -509,6 +513,17 @@ public class Graph implements Serializable {
             StreetVertexIndexFactory indexFactory) throws IOException, ClassNotFoundException {
         try {
             Graph graph = (Graph) in.readObject();
+            db = DBMaker.newFileDB(new File("testdb"))
+                .closeOnJvmShutdown()
+                .transactionDisable()
+                .mmapFileEnableIfSupported()
+                .readOnly()
+                .cacheLRUEnable()
+                .cacheSize(5000000)
+                .compressionEnable()
+                .checksumEnable()
+                .make();
+            PlainStreetEdge.setMap(db, false);
             LOG.debug("Basic graph info read.");
             if (graph.graphVersionMismatch())
                 throw new RuntimeException("Graph version mismatch detected.");
