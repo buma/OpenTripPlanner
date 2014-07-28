@@ -13,12 +13,18 @@
 
 package org.opentripplanner.common.geometry;
 
-import java.io.Serializable;
-import java.lang.ref.SoftReference;
-
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.CoordinateList;
 import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Envelope;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
+import java.lang.ref.SoftReference;
+import java.util.List;
+import org.opentripplanner.util.PolylineEncoder;
+import org.opentripplanner.util.model.EncodedPolylineBean;
 
 /**
  * A {@link CoordinateSequence} implementation based on a packed arrays. In this implementation,
@@ -41,6 +47,8 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
      * The dimensions of the coordinates hold in the packed array
      */
     protected int dimension;
+    
+    protected EncodedPolylineBean polyline;
 
     /**
      * A soft reference to the Coordinate[] representation of this sequence. Makes repeated
@@ -98,6 +106,17 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
 
         return coords;
     }
+    
+    protected void fillPolyline() {
+        if (this.dimension != 3) {
+            this.polyline = PolylineEncoder.createEncodings(new CoordinateList(this.toCoordinateArray()));
+        }
+    }
+    
+    
+
+    
+    
 
     /**
      * @return
@@ -228,6 +247,7 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
             }
             this.dimension = dimensions;
             this.coords = coords;
+            this.fillPolyline();
         }
 
         /**
@@ -241,6 +261,7 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
             for (int i = 0; i < coordinates.length; i++) {
                 this.coords[i] = coordinates[i];
             }
+            this.fillPolyline();
         }
 
         /**
@@ -261,6 +282,7 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
                 if (this.dimension >= 3)
                     coords[i * this.dimension + 2] = coordinates[i].z;
             }
+            this.fillPolyline();
         }
 
         /**
@@ -281,7 +303,41 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
             this.dimension = dimension;
             coords = new double[size * this.dimension];
         }
+        
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        if (this.dimension != 3) {
+            this.coords = null;
+        }
+        out.defaultWriteObject();
+        //out.writeObject(PolylineEncoder.createEncodings(new CoordinateList(this.toCoordinateArray())));
+    }
+        
+        private void readObject(java.io.ObjectInputStream in)
+                throws IOException, ClassNotFoundException {
+            in.defaultReadObject();
+            if (this.dimension == 3 ) {
+                return;
+            }
+            //EncodedPolylineBean bean = (EncodedPolylineBean) in.readObject();
+            List<Coordinate> list_coordinates = PolylineEncoder.decode(this.polyline);
+            
+            Coordinate[] coordinates = new Coordinate[list_coordinates.size()];
+            list_coordinates.toArray(coordinates);
+            
+            if (coordinates == null)
+                coordinates = new Coordinate[0];
+            this.dimension = dimension;
 
+            coords = new double[coordinates.length * this.dimension];
+            for (int i = 0; i < coordinates.length; i++) {
+                coords[i * this.dimension] = coordinates[i].y;
+                if (this.dimension >= 2)
+                    coords[i * this.dimension + 1] = coordinates[i].x;
+                if (this.dimension >= 3)
+                    coords[i * this.dimension + 2] = coordinates[i].z;
+            }
+        }
+        
         /**
          * @see com.vividsolutions.jts.geom.CoordinateSequence#getCoordinate(int)
          */
@@ -361,6 +417,7 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
             }
             this.dimension = dimensions;
             this.coords = coords;
+            fillPolyline();
         }
 
         /**
@@ -375,6 +432,7 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
             for (int i = 0; i < coordinates.length; i++) {
                 this.coords[i] = (float) coordinates[i];
             }
+            fillPolyline();
         }
 
         /**
@@ -395,6 +453,7 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
                 if (this.dimension >= 3)
                     coords[i * this.dimension + 2] = (float) coordinates[i].z;
             }
+            fillPolyline();
         }
 
         /**
@@ -416,7 +475,43 @@ public abstract class PackedCoordinateSequence implements CoordinateSequence, Se
             double z = dimension == 2 ? 0.0 : coords[i * dimension + 2];
             return new Coordinate(x, y, z);
         }
+        
+        private void writeObject(ObjectOutputStream out) throws IOException {
+            if (this.dimension != 3) {
+                this.coords = null;
+            }
+            out.defaultWriteObject();
+        }
 
+        private void readObject(java.io.ObjectInputStream in)
+                throws IOException, ClassNotFoundException {
+            in.defaultReadObject();
+            if (this.dimension == 3) {
+                return;
+            }
+            //EncodedPolylineBean bean = (EncodedPolylineBean) in.readObject();
+            List<Coordinate> list_coordinates = PolylineEncoder.decode(this.polyline);
+
+            Coordinate[] coordinates = new Coordinate[list_coordinates.size()];
+            list_coordinates.toArray(coordinates);
+
+            if (coordinates == null) {
+                coordinates = new Coordinate[0];
+            }
+            this.dimension = dimension;
+
+            coords = new float[coordinates.length * this.dimension];
+            for (int i = 0; i < coordinates.length; i++) {
+                coords[i * this.dimension] = (float) coordinates[i].y;
+                if (this.dimension >= 2) {
+                    coords[i * this.dimension + 1] = (float) coordinates[i].x;
+                }
+                if (this.dimension >= 3) {
+                    coords[i * this.dimension + 2] = (float) coordinates[i].z;
+                }
+            }
+        }
+        
         /**
          * @see com.vividsolutions.jts.geom.CoordinateSequence#size()
          */
