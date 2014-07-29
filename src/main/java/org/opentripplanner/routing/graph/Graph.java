@@ -84,6 +84,9 @@ import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
+import org.mapdb.DB;
+import org.mapdb.DBMaker;
+import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 
 /**
  * A graph is really just one or more indexes into a set of vertexes. It used to keep edgelists for each vertex, but those are in the vertex now.
@@ -165,6 +168,7 @@ public class Graph implements Serializable {
     /** The density center of the graph for determining the initial geographic extent in the client. */
     private Coordinate center = null;
 
+    private transient static DB db;
     /**
      * Makes it possible to embed a default configuration inside a graph.
      */
@@ -609,6 +613,17 @@ public class Graph implements Serializable {
             StreetVertexIndexFactory indexFactory) throws IOException, ClassNotFoundException {
         try {
             Graph graph = (Graph) in.readObject();
+            db = DBMaker.newFileDB(new File("testdb"))
+                .closeOnJvmShutdown()
+                .transactionDisable()
+                .mmapFileEnableIfSupported()
+                .readOnly()
+                .cacheLRUEnable()
+                .cacheSize(5000000)
+                .compressionEnable()
+                .checksumEnable()
+                .make();
+            PlainStreetEdge.setMap(db, false);
             LOG.debug("Basic graph info read.");
             if (graph.graphVersionMismatch())
                 throw new RuntimeException("Graph version mismatch detected.");

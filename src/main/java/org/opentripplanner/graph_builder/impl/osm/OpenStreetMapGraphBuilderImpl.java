@@ -115,6 +115,10 @@ import com.vividsolutions.jts.geom.MultiLineString;
 import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
+import java.io.File;
+import java.util.concurrent.ConcurrentNavigableMap;
+import org.mapdb.DB;
+import org.mapdb.DBMaker;
 
 /**
  * Builds a street graph from OpenStreetMap data.
@@ -158,6 +162,20 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
     private static Logger LOG = LoggerFactory.getLogger(OpenStreetMapGraphBuilderImpl.class);
 
     // Private members that are only read or written internally.
+    
+    private static DB db;
+    
+    
+    static {
+        db = DBMaker.newFileDB(new File("testdb"))
+                .closeOnJvmShutdown()
+                .transactionDisable()
+                .mmapFileEnableIfSupported()
+                .asyncWriteEnable()
+                .compressionEnable()
+                .checksumEnable()
+                .make();
+    }
 
     private Set<Object> _uniques = new HashSet<Object>();
 
@@ -259,6 +277,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
 
     @Override
     public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
+        PlainStreetEdge.setMap(db, true);
         Handler handler = new Handler(graph);
         for (OpenStreetMapProvider provider : _providers) {
             LOG.info("Gathering OSM from provider: " + provider);
@@ -266,6 +285,9 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         }
         LOG.info("Building street graph from OSM");
         handler.buildGraph(extra);
+        db.commit();
+        //db.compact();
+        db.close();
     }
 
     @SuppressWarnings("unchecked")

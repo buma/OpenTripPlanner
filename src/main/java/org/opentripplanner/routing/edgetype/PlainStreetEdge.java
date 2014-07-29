@@ -43,6 +43,8 @@ import org.slf4j.LoggerFactory;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
+import java.util.concurrent.ConcurrentNavigableMap;
+import org.mapdb.DB;
 
 /**
  * This represents a street segment.
@@ -63,8 +65,7 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
     @Getter
     private double length;
 
-    @Getter
-    private LineString geometry;
+    transient private LineString geometry;
     
     @Getter @Setter
     private String name;
@@ -80,6 +81,27 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
 
     @Getter @Setter
     private int streetClass = CLASS_OTHERPATH;
+    
+    private transient static ConcurrentNavigableMap<Integer, LineString> map;
+    private transient static boolean insertsEnabled = false;
+    
+    /**
+     * Sets MapDB database for geometries
+     * @param db MapDB database
+     * @param canInsert If insertion is enabled in database
+     */
+    public static void setMap(DB db, boolean canInsert) {
+        map = db.getTreeMap("geometries");
+        insertsEnabled = canInsert;
+    }
+    
+    public LineString getGeometry() {
+        if (this.geometry == null) {
+            return map.get(new Integer(this.getId()));
+        } else {
+            return this.geometry;
+        }
+    }
     
     /**
      * Marks that this edge is the reverse of the one defined in the source
@@ -159,6 +181,9 @@ public class PlainStreetEdge extends StreetEdge implements Cloneable {
         this.back = back;
         this.carSpeed = carSpeed;
         if (geometry != null) {
+            if (this.insertsEnabled) {
+                map.put(new Integer(this.getId()), geometry);
+            }
             try {
                 for (Coordinate c : geometry.getCoordinates()) {
                     if (Double.isNaN(c.x)) {
