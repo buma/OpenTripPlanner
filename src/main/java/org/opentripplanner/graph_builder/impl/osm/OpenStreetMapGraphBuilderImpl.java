@@ -287,7 +287,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         handler.buildGraph(extra);
         db.commit();
         //db.compact();
-        db.close();
+        //db.close();
     }
 
     @SuppressWarnings("unchecked")
