@@ -20,7 +20,9 @@ import com.vividsolutions.jts.index.strtree.STRtree;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,9 +30,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 import java.util.logging.Level;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -157,6 +161,11 @@ public class cycleDisableBuilder implements GraphBuilder {
         List<PlainStreetEdge> streets = Lists.newArrayList(filter(allEdges, PlainStreetEdge.class));
         List<PlainStreetEdge> cycleways = new ArrayList<PlainStreetEdge>();
         List<StreetFeature> cycleways_features = new ArrayList<StreetFeature>();
+        
+        List<StreetEdge> candidateStreets = new ArrayList<StreetEdge>(100);
+        List<Geometry> full_cycleway_polygons = new ArrayList<Geometry>(100);
+        List<StreetFeature> street_candidate_feat = new ArrayList<StreetFeature>();
+        Set<Geometry> geometry_streets = new HashSet<Geometry>();
         
         //SimpleFeatureCollection features = new DefaultFeatureCollection(null, null);
         
@@ -337,14 +346,18 @@ public class cycleDisableBuilder implements GraphBuilder {
                 
                 full_cycleway = GeometryUtils.getGeometryFactory().createLineString(cyclewayCoordinates.toArray(new Coordinate[cyclewayCoordinates.size()]));
                 
-                StreetFeature full_feature = StreetFeature.createRoadFeature("Full cycleway", current_cycleway.getPermission().toString(), full_cycleway);
+                /*StreetFeature full_feature = StreetFeature.createRoadFeature("Full cycleway", current_cycleway.getPermission().toString(), full_cycleway);
                 full_feature.addPropertie("stroke", "#000000");
                 full_feature.addPropertie("stroke-opacity", "0.4");
                 full_feature.addPropertie("stroke-width", "4.0");
-                cycleways_features.add(full_feature);
+                cycleways_features.add(full_feature);*/
                 
+                Geometry cylceway_polygon = (Geometry)full_cycleway.buffer(0.00015);
                 
+                full_cycleway_polygons.add(cylceway_polygon);
                 
+                StreetFeature feature_poly = StreetFeature.createPolygonFeature("full polygon", cylceway_polygon);
+                cycleways_features.add(feature_poly);
             }
             //remember cycleways with no connections.
             //make distance treshold larger and repeat
@@ -353,8 +366,32 @@ public class cycleDisableBuilder implements GraphBuilder {
             
             number_of_processed_ways++;
             
-            if (number_of_processed_ways > 40) {
+            /*if (number_of_processed_ways > 40) {
                 break;
+            }*/
+        }
+        
+        for(Geometry cycleway_polygon: full_cycleway_polygons) {
+            distanceTreshold = DISTANCE_THRESHOLD;
+            Envelope envelope = cycleway_polygon.getEnvelopeInternal();
+            List<PlainStreetEdge> nearbyEdges = index.query(envelope);
+            LOG.info("Found good {} streets", nearbyEdges.size());
+            
+            //List<PlainStreetEdge> street_candidates = new ArrayList<PlainStreetEdge>(nearbyEdges.size());
+            boolean hasCandidateEdges = !nearbyEdges.isEmpty();
+            for (PlainStreetEdge nearStreet: nearbyEdges) {
+                if (nearStreet.getLength() > 15 && cycleway_polygon.covers(nearStreet.getGeometry())) {
+                    if (!geometry_streets.contains(nearStreet.getGeometry())) {
+                        candidateStreets.add(nearStreet);
+                        StreetFeature feature1 = StreetFeature.createRoadFeature(nearStreet.getName(),
+                        nearStreet.getPermission().toString(),
+                        nearStreet.getGeometry());
+                        feature1.addPropertie("label", nearStreet.getLabel());
+                        feature1.addPropertie("length", nearStreet.getLength());
+                        street_candidate_feat.add(feature1);
+                        geometry_streets.add(nearStreet.getGeometry());
+                    }
+                }
             }
         }
         
@@ -370,10 +407,40 @@ public class cycleDisableBuilder implements GraphBuilder {
                 module.addSerializer(new StreetFeatureSerializer());
                 module.addSerializer(new FeatureCollectionSerializer());
                 mapper.registerModule(module);
-                fileOutputStream = new FileOutputStream(_path);
+                fileOutputStream = new FileOutputStream(new File(_path, "data.geojson"));
                 JsonGenerator jsonGen = mapper.getJsonFactory().createJsonGenerator(fileOutputStream);
                 
                 mapper.writeValue(jsonGen, new StreetFeatureCollection(cycleways_features));
+                
+                JsonGenerator jsonGen1 = mapper.getJsonFactory().createJsonGenerator(new FileOutputStream(new File(_path, "cand_streets.geojson")));
+                
+                
+                mapper.writeValue(jsonGen1, new StreetFeatureCollection(street_candidate_feat));
+                
+                FileWriter outFile = new FileWriter(new File(_path, "ids.txt"));
+                PrintWriter pw = new PrintWriter(outFile);
+                
+                Set<String> addedIds = new HashSet<String>();
+                for(StreetEdge cand_street_edge: candidateStreets) {
+                    if (!addedIds.contains(cand_street_edge.getLabel())) {
+                        String wayID = cand_street_edge.getLabel().split(":")[2];
+                        if (addedIds.size() == 0) {
+                            pw.print(wayID);
+                        } else {
+                            if ((addedIds.size() == 1) || ((addedIds.size()-1)%25!=0)) {
+                                pw.print(",");
+                            }
+                            pw.print(wayID);
+                            if (addedIds.size()%25==0) {
+                                pw.println();
+                            }
+                        }
+                        
+                        addedIds.add(cand_street_edge.getLabel());
+                    }
+                }
+                pw.close();
+                jsonGen1.close();
             } catch (FileNotFoundException ex) {
                 java.util.logging.Logger.getLogger(cycleDisableBuilder.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IOException ex) {
@@ -383,6 +450,7 @@ public class cycleDisableBuilder implements GraphBuilder {
             } finally {
                 try {
                     fileOutputStream.close();
+                    
                 } catch (IOException ex) {
                     java.util.logging.Logger.getLogger(cycleDisableBuilder.class.getName()).log(Level.SEVERE, null, ex);
                 }
