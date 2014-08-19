@@ -132,7 +132,8 @@ public class cycleDisableBuilder implements GraphBuilder {
     private static boolean is_cycleway(StreetEdge current_street) {
         return (!current_street.canTraverse(driving) && current_street.canTraverse(cycling)
                         && (current_street.getName().equals("path")
-                        || current_street.getName().equals("bike path")));
+                        || current_street.getName().equals("bike path")
+                        || current_street.getName().equals("footbridge")));
     }
 
     @Override
