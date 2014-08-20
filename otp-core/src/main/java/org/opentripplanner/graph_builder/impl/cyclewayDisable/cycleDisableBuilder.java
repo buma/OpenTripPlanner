@@ -423,7 +423,13 @@ public class cycleDisableBuilder implements GraphBuilder {
                         feature1.addPropertie("stroke", "#ff0000");
                         feature1.addPropertie("info", "bicycles can't ride it");
                     } else {
+                        
+                        
                         candidateStreets.add(nearStreet);
+                    }
+                    if (!(is_connected(nearStreet, geometry_streets))) {
+                        feature1.addPropertie("stroke", "#00ff00");
+                        feature1.addPropertie("info", "Not connected");
                     }
                     street_candidate_feat.add(feature1);
                     geometry_streets.add(nearStreet.getGeometry());
@@ -484,6 +490,9 @@ public class cycleDisableBuilder implements GraphBuilder {
                 Set<String> addedIds = new HashSet<String>();
                 for(StreetEdge cand_street_edge: candidateStreets) {
                     if (!addedIds.contains(cand_street_edge.getLabel())) {
+                        /*if(!(is_connected(cand_street_edge, geometry_streets))) {
+                            continue;
+                        }*/
                         String wayID = cand_street_edge.getLabel().split(":")[2];
                         if (addedIds.size() == 0) {
                             pw.print(wayID);
@@ -595,6 +604,32 @@ public class cycleDisableBuilder implements GraphBuilder {
                     }
                 }
         return null;
+    }
+
+    private boolean is_connected(StreetEdge cand_street_edge, Set<Geometry> geometry_streets) {
+        List<Edge> outEdges = cand_street_edge.getToVertex().getOutgoingStreetEdges();
+        //checks if this road is connected to any other found road
+        for(Edge outEdge: outEdges) {
+            if (outEdge.isReverseOf(cand_street_edge)) {
+                continue;
+            }
+            StreetEdge soutEdge = (StreetEdge) outEdge;
+            if (is_cycleway(soutEdge) || geometry_streets.contains(soutEdge.getGeometry())) {
+                return true;
+            }
+        }
+        
+        Collection<Edge> inEdges = cand_street_edge.getFromVertex().getIncoming();
+        for(Edge inEdge: inEdges) {
+            if (inEdge.isReverseOf(cand_street_edge) || (!(inEdge instanceof StreetEdge))) {
+                continue;
+            }
+            StreetEdge sinEdge = (StreetEdge) inEdge;
+            if (is_cycleway(sinEdge) || geometry_streets.contains(sinEdge.getGeometry())) {
+                return true;
+            }
+        }
+        return false;
     }
     
 }
