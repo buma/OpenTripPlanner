@@ -366,7 +366,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                 full_feature.addPropertie("stroke-width", "4.0");
                 cycleways_features.add(full_feature);*/
                 
-                Geometry cylceway_polygon = (Geometry)full_cycleway.buffer(0.00017);
+                Geometry cylceway_polygon = (Geometry)full_cycleway.buffer(0.00021);
                 
                 if(!seen_cycleway_polygons.contains(cylceway_polygon)) {
                 
@@ -396,24 +396,49 @@ public class cycleDisableBuilder implements GraphBuilder {
             //LOG.info("Found good {} streets", nearbyEdges.size());
             
             //List<PlainStreetEdge> street_candidates = new ArrayList<PlainStreetEdge>(nearbyEdges.size());
+            
+            /*Geometry polygon = GeometryUtils.getGeometryFactory().toGeometry(envelope);
+            StreetFeature polygon1 = StreetFeature.createPolygonFeature("envelope", polygon);
+            street_candidate_feat.add(polygon1);*/
             boolean hasCandidateEdges = !nearbyEdges.isEmpty();
             for (PlainStreetEdge nearStreet: nearbyEdges) {
-                if (cycleway_polygon.covers(nearStreet.getGeometry())) {
-                    if (!geometry_streets.contains(nearStreet.getGeometry())) {
-                        candidateStreets.add(nearStreet);
-                        StreetFeature feature1 = StreetFeature.createRoadFeature(nearStreet.getName(),
-                        nearStreet.getPermission().toString(),
-                        nearStreet.getGeometry());
-                        feature1.addPropertie("label", nearStreet.getLabel());
-                        feature1.addPropertie("length", nearStreet.getLength());
-                        if (nearStreet.getLength() <= 15) {
-                            feature1.addPropertie("stroke", "#FFFF00");
-                            feature1.addPropertie("info", "to short");
-                        }
-                        street_candidate_feat.add(feature1);
-                        geometry_streets.add(nearStreet.getGeometry());
-                    }
+                if (geometry_streets.contains(nearStreet.getGeometry())) {
+                    continue;
                 }
+                StreetFeature feature1 = StreetFeature.createRoadFeature(
+                    nearStreet.getName(),
+                    nearStreet.getPermission().toString(),
+                    nearStreet.getGeometry()
+                );
+                feature1.addPropertie("label", nearStreet.getLabel());
+                feature1.addPropertie("length", nearStreet.getLength());
+                feature1.addPropertie("distance", cycleway_polygon.distance(nearStreet.getGeometry()));
+                if (cycleway_polygon.covers(nearStreet.getGeometry())) {
+                    
+                    if (nearStreet.getLength() <= 15) {
+                        feature1.addPropertie("stroke", "#ADD8E6");
+                        feature1.addPropertie("info", "to short");
+                    }
+                    if (!nearStreet.canTraverse(cycling)) {
+                        feature1.addPropertie("stroke", "#ff0000");
+                        feature1.addPropertie("info", "bicycles can't ride it");
+                    } else {
+                        candidateStreets.add(nearStreet);
+                    }
+                    street_candidate_feat.add(feature1);
+                    geometry_streets.add(nearStreet.getGeometry());
+
+                } /*else if (cycleway_polygon.isWithinDistance(nearStreet.getGeometry(), 0)) {
+                    feature1.addPropertie("stroke", "#FF7F00");
+                    feature1.addPropertie("info", "contains");
+                    street_candidate_feat.add(feature1);
+//                    geometry_streets.add(nearStreet.getGeometry());
+                } else {
+                    
+                    feature1.addPropertie("stroke", "#7F00FF");
+                    feature1.addPropertie("info", "ostalo");
+                    street_candidate_feat.add(feature1);
+                }*/
             }
         }
         
