@@ -34,7 +34,9 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -51,6 +53,7 @@ import static org.opentripplanner.common.IterableLibrary.filter;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.common.model.T2;
 import org.opentripplanner.graph_builder.services.GraphBuilder;
 import org.opentripplanner.model.json_serialization.EdgeSetJSONSerializer;
 import org.opentripplanner.model.json_serialization.GeoJSONDeserializer;
@@ -586,13 +589,22 @@ public class cycleDisableBuilder implements GraphBuilder {
         } else {
             nextEdges = current_street.getFromVertex().getIncoming();
         }
+        
+        Comparator<T2<StreetEdge, Integer>> t2_comp = new Comparator<T2<StreetEdge, Integer>>() {
+
+            @Override
+            public int compare(T2<StreetEdge, Integer> o1, T2<StreetEdge, Integer> o2) {
+                return o1.getSecond().compareTo(o2.getSecond());
+            }
+        };
+        List<T2<StreetEdge, Integer>> candidates = new ArrayList<T2<StreetEdge, Integer>>(nextEdges.size());
         for (Edge edge : nextEdges) {
             if (!(edge instanceof StreetEdge)) {
                 continue;
             }
                     StreetEdge sedge = (StreetEdge) edge;
                     if (!sedge.isReverseOf(current_street)) {
-                        LOG.info("Found candidate edge:{} {}", sedge.getLabel(), sedge.getLength());
+//                        LOG.info("Found candidate edge:{} {}", sedge.getLabel(), sedge.getLength());
                         StreetFeature candidateFeature = StreetFeature.createCycleFeature(sedge.getName(), sedge.getPermission().toString(), sedge.getGeometry());
                         candidateFeature.addPropertie("label", sedge.getLabel());
                         candidateFeature.addPropertie("stroke", "#FFFF00");
@@ -600,27 +612,50 @@ public class cycleDisableBuilder implements GraphBuilder {
                         candidateFeature.addPropertie("stroke-width", "2.0");
                         double compAzimuth = compareAzimuth(current_street, sedge);
                         candidateFeature.addPropertie("compAzimuth", compAzimuth);
+                        int diff = 0;
+                        if (forward) {
+                            int outAngle = current_street.getOutAngle();
+                            int sedgeInAngle = sedge.getInAngle();
+                            diff = Math.abs(outAngle-sedgeInAngle);
+                        } else {
+                            int inAngle = current_street.getInAngle();
+                            int endeOutAngle = sedge.getOutAngle();
+                            diff = Math.abs(inAngle-endeOutAngle);
+                        }
+                        candidateFeature.addPropertie("compAngle", diff);
                         
                         //double distance = current_street.getGeometry().distance(sedge.getGeometry());
                         //candidateFeature.addPropertie("distanceFrom", distance);
                         
+                        if (current_street.getLabel().equals(sedge.getLabel())) {
+                            candidates.add(new T2(sedge, 100));
+                        } else if (compAzimuth <= 10  && is_cycleway(sedge)) {
+                            candidates.add(new T2(sedge, 80));
+                        } else if (diff <= 10 && is_cycleway(sedge)) {
+                            candidates.add(new T2(sedge, 60));
+                        }
+                        
                         
                         if (current_street.getLabel().equals(sedge.getLabel())
-                                || (compAzimuth <= 10 && is_cycleway(sedge))) {
-                            LOG.info("Added edge:{}, {}", sedge.getLabel(), sedge.getLength());
-                            if (forward) {
+                                || (compAzimuth <= 10  && is_cycleway(sedge))) {
+                            //LOG.info("Added edge:{}, {}", sedge.getLabel(), sedge.getLength());
+                            /*if (forward) {
                                 iter.add(sedge);
                             } else {
                                 iter.add(sedge);
                                 iter.previous();
-                            }
+                            }*/
                             
                             cycleways_features.add(candidateFeature);
-                            lengthen_cycleway(sedge, street_candidates, cycleways_features, forward, iter);
+                            //lengthen_cycleway(sedge, street_candidates, cycleways_features, forward, iter);
                         } else {
                             if (is_cycleway(sedge)) {
                                 candidateFeature.addPropertie("stroke", "#40E0D0");
                                 candidateFeature.addPropertie("info", "just cycleway (azimuth larg)");
+                                if(diff < 20 ) {
+                                    candidateFeature.addPropertie("stroke", "#8a8d8f");
+                                    candidateFeature.addPropertie("info", "cycleway (angle small)");
+                                }
                             } else {
                                 candidateFeature.addPropertie("info", "not cycleway (azimuth larg)");
                                 candidateFeature.addPropertie("stroke", "#7F00FF");
@@ -630,6 +665,20 @@ public class cycleDisableBuilder implements GraphBuilder {
                         } 
                     }
                 }
+        //Collections.sort(candidates, t2_comp);
+        try {
+            T2<StreetEdge, Integer> bestCandidate = Collections.max(candidates, t2_comp);
+            StreetEdge sedge = bestCandidate.getFirst();
+            LOG.info("Best ca : {} {} {} ({}) {}", sedge.getLabel(), sedge.getLength(), compareAzimuth(current_street, sedge), bestCandidate.getSecond(), candidates.size());
+            if (forward) {
+                iter.add(sedge);
+            } else {
+                iter.add(sedge);
+                iter.previous();
+            }
+            lengthen_cycleway(sedge, street_candidates, cycleways_features, forward, iter);
+        } catch (NoSuchElementException e) {
+        }
         return null;
     }
 
