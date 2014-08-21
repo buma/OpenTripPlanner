@@ -697,7 +697,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                 continue;
             }
             StreetEdge soutEdge = (StreetEdge) outEdge;
-            if (is_cycleway(soutEdge) || geometry_streets.contains(soutEdge.getGeometry())) {
+            if (geometry_streets.contains(soutEdge.getGeometry())) {
                 return true;
             }
         }
@@ -708,7 +708,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                 continue;
             }
             StreetEdge sinEdge = (StreetEdge) inEdge;
-            if (is_cycleway(sinEdge) || geometry_streets.contains(sinEdge.getGeometry())) {
+            if (geometry_streets.contains(sinEdge.getGeometry())) {
                 return true;
             }
         }
