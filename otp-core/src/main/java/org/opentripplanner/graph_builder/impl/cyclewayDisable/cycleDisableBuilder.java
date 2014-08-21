@@ -425,12 +425,14 @@ public class cycleDisableBuilder implements GraphBuilder {
                     } else {
                         
                         
+                        
                         candidateStreets.add(nearStreet);
                     }
-                    if (!(is_connected(nearStreet, geometry_streets))) {
+                    /*if (!(is_connected(nearStreet, geometry_streets))) {
                         feature1.addPropertie("stroke", "#00ff00");
                         feature1.addPropertie("info", "Not connected");
-                    }
+                        feature1.addPropertie("id", nearStreet.getId());
+                    }*/
                     street_candidate_feat.add(feature1);
                     geometry_streets.add(nearStreet.getGeometry());
 
@@ -448,6 +450,31 @@ public class cycleDisableBuilder implements GraphBuilder {
             }
         }
         
+        //check for connectivenes after every connected street is added
+        for(Geometry cycleway_polygon: full_cycleway_polygons) {
+            distanceTreshold = DISTANCE_THRESHOLD;
+            Envelope envelope = cycleway_polygon.getEnvelopeInternal();
+            List<PlainStreetEdge> nearbyEdges = index.query(envelope);
+            for (PlainStreetEdge nearStreet: nearbyEdges) {
+                StreetFeature feature1 = StreetFeature.createRoadFeature(
+                    nearStreet.getName(),
+                    nearStreet.getPermission().toString(),
+                    nearStreet.getGeometry()
+                );
+                feature1.addPropertie("label", nearStreet.getLabel());
+                feature1.addPropertie("length", nearStreet.getLength());
+                feature1.addPropertie("distance", cycleway_polygon.distance(nearStreet.getGeometry()));
+                if (cycleway_polygon.covers(nearStreet.getGeometry())) {
+                    if (!(is_connected(nearStreet, geometry_streets))) {
+                        feature1.addPropertie("stroke", "#00ff00");
+                        feature1.addPropertie("info", "Not connected");
+                        feature1.addPropertie("stroke-width", 4);
+                        feature1.addPropertie("id", nearStreet.getId());
+                    }
+                    street_candidate_feat.add(feature1);
+                }
+            }
+        }
         if (!cycleways_features.isEmpty()) {
             FileOutputStream fileOutputStream = null;
             try {
