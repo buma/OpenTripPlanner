@@ -282,17 +282,24 @@ public class cycleDisableBuilder implements GraphBuilder {
                 distanceTreshold *= 2;
                 nearbyEdges = index.query(envelope);
             }*/
-            /*if(current_street.getLabel().equals("osm:way:266592491")) {
-            Geometry polygon = GeometryUtils.getGeometryFactory().toGeometry(envelope);
-                StreetFeature polygonFeature = StreetFeature.createPolygonFeature(current_street.getLabel(), polygon);
-                polygonFeature.addPropertie("distanceT", new Double(distanceTreshold).toString());
-                polygonFeature.addPropertie("found", "true");
-                cycleways_features.add(polygonFeature); 
-            }*/
+            if (nearbyEdges.isEmpty()) {
+                LOG.info("Expanding envelope");
+                distanceTreshold = DISTANCE_THRESHOLD/2;
+                envelope.expandBy(distanceTreshold);
+                nearbyEdges = index.query(envelope);
+            }
+            
            // LOG.info("Found {} streets", nearbyEdges.size());
             
             List<PlainStreetEdge> street_candidates = new ArrayList<PlainStreetEdge>(nearbyEdges.size());
             boolean hasCandidateEdges = !nearbyEdges.isEmpty();
+            //if(current_street.getLabel().equals("osm:way:266592491")) {
+            /*Geometry polygon = GeometryUtils.getGeometryFactory().toGeometry(envelope);
+                StreetFeature polygonFeature = StreetFeature.createPolygonFeature(current_cycleway.getLabel(), polygon);
+                polygonFeature.addPropertie("distanceT", new Double(distanceTreshold).toString());
+                polygonFeature.addPropertie("found", hasCandidateEdges);
+                cycleways_features.add(polygonFeature); */
+            //}
             for (PlainStreetEdge nearStreet: nearbyEdges) {
                 
                 StreetFeature feature1 = StreetFeature.createRoadFeature(nearStreet.getName(),
