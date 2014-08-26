@@ -13,15 +13,18 @@
 
 package org.opentripplanner.graph_builder.impl.ned;
 
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.index.strtree.STRtree;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-
+import java.util.Set;
 import javax.media.jai.InterpolationBilinear;
-
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.Interpolator2D;
 import org.geotools.geometry.DirectPosition2D;
@@ -35,14 +38,12 @@ import org.opentripplanner.graph_builder.impl.extra_elevation_data.ElevationPoin
 import org.opentripplanner.graph_builder.services.GraphBuilder;
 import org.opentripplanner.graph_builder.services.ned.NEDGridCoverageFactory;
 import org.opentripplanner.routing.edgetype.EdgeWithElevation;
+import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * {@link GraphBuilder} plugin that takes a constructed (@link Graph} and overlays it onto National
@@ -91,7 +92,7 @@ public class NEDGraphBuilderImpl implements GraphBuilder {
     public void setDistanceBetweenSamplesM(double distance) {
         distanceBetweenSamplesM = distance;
     }
-
+    
     @Override
     public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
         gridCoverageFactory.setGraph(graph);
@@ -106,17 +107,50 @@ public class NEDGraphBuilderImpl implements GraphBuilder {
         List<EdgeWithElevation> edgesWithElevation = new ArrayList<EdgeWithElevation>();
         int nProcessed = 0;
         int nTotal = graph.countEdges();
+        log.info("Creating index");
+        STRtree edgeIndex = new STRtree();
+        for (Vertex v : graph.getVertices()) {
+            for (Edge e : v.getOutgoing()) {
+                if (e instanceof EdgeWithElevation) {
+                    Envelope envelope;
+                    Geometry geometry = e.getGeometry();
+                    envelope = geometry.getEnvelopeInternal();
+                    envelope.expandBy(0.3);
+                    edgeIndex.insert(envelope, e);
+                }
+            }
+        }
+        log.info("Created index");
+        Set seen = new HashSet<Integer>();
         for (Vertex gv : graph.getVertices()) {
             for (Edge ee : gv.getOutgoing()) {
                 if (ee instanceof EdgeWithElevation) {
+                    if (seen.contains(ee.getId())) {
+                        continue;
+                    }
                     EdgeWithElevation edgeWithElevation = (EdgeWithElevation) ee;
                     processEdge(graph, edgeWithElevation);
                     if (edgeWithElevation.getElevationProfile() != null && !edgeWithElevation.isElevationFlattened()) {
                         edgesWithElevation.add(edgeWithElevation);
                     }
+                    seen.add(ee.getId());
                     nProcessed += 1;
                     if (nProcessed % 50000 == 0)
                         log.info("set elevation on {}/{} edges", nProcessed, nTotal);
+
+                    //look at nearest edges
+                    for(Object o_ee1 : edgeIndex.query(ee.getGeometry().getEnvelopeInternal())) {
+                        EdgeWithElevation ee1 = (EdgeWithElevation) o_ee1;
+                        processEdge(graph, ee1);
+                        if (ee1.getElevationProfile() != null && !ee1.isElevationFlattened()) {
+                            edgesWithElevation.add(ee1);
+                        }
+                        seen.add(ee1.getId());
+                        nProcessed += 1;
+                        if (nProcessed % 50000 == 0) {
+                            log.info("set elevation on {}/{} edges", nProcessed, nTotal);
+                        }
+                    }
                 }
             }
         }
@@ -287,7 +321,7 @@ public class NEDGraphBuilderImpl implements GraphBuilder {
 
             }
         } // end loop over states
-
+        long missing = 0;
         // do actual assignments
         for (Vertex v : graph.getVertices()) {
             Double fromElevation = elevations.get(v);
@@ -299,6 +333,7 @@ public class NEDGraphBuilderImpl implements GraphBuilder {
 
                     if (fromElevation == null || toElevation == null) {
                         log.warn("Unexpectedly missing elevation for edge " + edge);
+                        missing++;
                         continue;
                     }
 
@@ -318,6 +353,7 @@ public class NEDGraphBuilderImpl implements GraphBuilder {
                 }
             }
         }
+        log.info("Missing {} edges", missing);
     }
 
     /**
