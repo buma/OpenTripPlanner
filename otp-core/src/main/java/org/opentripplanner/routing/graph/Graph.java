@@ -472,7 +472,7 @@ public class Graph implements Serializable {
      */
     public static Graph load(ObjectInputStream in, LoadLevel level) throws IOException,
             ClassNotFoundException {
-        return load(in, level, new DefaultStreetVertexIndexFactory());
+        return load(new FSTObjectInput(in), level, new DefaultStreetVertexIndexFactory());
     }
     
     /** 
@@ -507,7 +507,7 @@ public class Graph implements Serializable {
      * @throws ClassNotFoundException
      */
     @SuppressWarnings("unchecked")
-    public static Graph load(ObjectInputStream in, LoadLevel level,
+    public static Graph load(FSTObjectInput in, LoadLevel level,
             StreetVertexIndexFactory indexFactory) throws IOException, ClassNotFoundException {
         try {
             Graph graph = (Graph) in.readObject();
