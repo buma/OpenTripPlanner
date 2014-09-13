@@ -1,3 +1,17 @@
+Default
+23:03:49.717 INFO (Graph.java:741) Summary (number of each type of annotation)
+23:03:49.722 INFO (Graph.java:747)     Graphwide - 1
+23:03:49.722 INFO (Graph.java:747)     HopZeroTime - 116
+23:03:49.722 INFO (Graph.java:747)     NoFutureDates - 1
+23:03:49.722 INFO (Graph.java:747)     GraphConnectivity - 161
+23:03:49.722 INFO (Graph.java:747)     ElevationFlattened - 3379
+23:03:49.725 INFO (Graph.java:582) Main graph size: |V|=25085 |E|=61630
+23:03:49.725 INFO (Graph.java:583) Writing graph /home/mabu/programiranje/forotp/data/Graph.obj ...
+23:03:50.398 INFO (Graph.java:621) Graph written.
+23:03:50.404 INFO (GraphBuilderMain.java:62) Total graph build time: 156.741 seconds
+
+
+
 With STRTREE
 18:50:10.756 INFO (Graph.java:741) Summary (number of each type of annotation):
 18:50:10.761 INFO (Graph.java:747)     HopZeroTime - 116
