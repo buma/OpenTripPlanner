@@ -1,0 +1,108 @@
+Default
+23:03:49.717 INFO (Graph.java:741) Summary (number of each type of annotation)
+23:03:49.722 INFO (Graph.java:747)     Graphwide - 1
+23:03:49.722 INFO (Graph.java:747)     HopZeroTime - 116
+23:03:49.722 INFO (Graph.java:747)     NoFutureDates - 1
+23:03:49.722 INFO (Graph.java:747)     GraphConnectivity - 161
+23:03:49.722 INFO (Graph.java:747)     ElevationFlattened - 3379
+23:03:49.725 INFO (Graph.java:582) Main graph size: |V|=25085 |E|=61630
+23:03:49.725 INFO (Graph.java:583) Writing graph /home/mabu/programiranje/forotp/data/Graph.obj ...
+23:03:50.398 INFO (Graph.java:621) Graph written.
+23:03:50.404 INFO (GraphBuilderMain.java:62) Total graph build time: 156.741 seconds
+
+
+
+With STRTREE
+18:50:10.756 INFO (Graph.java:741) Summary (number of each type of annotation):
+18:50:10.761 INFO (Graph.java:747)     HopZeroTime - 116
+18:50:10.761 INFO (Graph.java:747)     Graphwide - 1
+18:50:10.761 INFO (Graph.java:747)     GraphConnectivity - 163
+18:50:10.761 INFO (Graph.java:747)     ElevationFlattened - 3374
+18:50:10.763 INFO (Graph.java:582) Main graph size: |V|=25065 |E|=61608
+18:50:10.763 INFO (Graph.java:583) Writing graph /home/mabu/programiranje/forotp/data/Graph.obj ...
+18:50:11.441 INFO (Graph.java:621) Graph written.
+18:50:11.448 INFO (GraphBuilderMain.java:62) Total graph build time: 76.178 seconds
+
+real	1m16.444s
+user	1m29.153s
+sys	0m2.353s
+
+With STRTREE and envelope expanded 0.4
+19:01:34.224 INFO (NEDGraphBuilderImpl.java:356) Missing 861 edges
+19:01:35.331 INFO (Graph.java:741) Summary (number of each type of annotation):
+19:01:35.336 INFO (Graph.java:747)     HopZeroTime - 116
+19:01:35.336 INFO (Graph.java:747)     Graphwide - 1
+19:01:35.336 INFO (Graph.java:747)     GraphConnectivity - 163
+19:01:35.336 INFO (Graph.java:747)     ElevationFlattened - 3374
+19:01:35.340 INFO (Graph.java:582) Main graph size: |V|=25065 |E|=61608
+19:01:35.340 INFO (Graph.java:583) Writing graph /home/mabu/programiranje/forotp/data/Graph.obj ...
+19:01:36.026 INFO (Graph.java:621) Graph written.
+19:01:36.033 INFO (GraphBuilderMain.java:62) Total graph build time: 29.278 seconds
+
+real	0m29.536s
+user	0m42.473s
+sys	0m1.053s
+
+With STRTREE and envelope expanded 0.6
+19:03:37.007 INFO (NEDGraphBuilderImpl.java:356) Missing 861 edges
+19:03:37.007 INFO (TransitToStreetNetworkGraphBuilderImpl.java:44) Linking transit stops to streets...
+19:03:37.621 INFO (PruneFloatingIslands.java:77) Pruning isolated islands in street network
+19:03:37.696 INFO (StreetUtils.java:129) 164 sub graphs found
+19:03:37.786 WARN (StreetUtils.java:151) Removed edgeless vertices after pruning islands
+19:03:37.786 INFO (TransitToStreetNetworkGraphBuilderImpl.java:44) Linking transit stops to streets...
+19:03:38.028 INFO (Graph.java:741) Summary (number of each type of annotation):
+19:03:38.033 INFO (Graph.java:747)     ElevationFlattened - 3374
+19:03:38.034 INFO (Graph.java:747)     GraphConnectivity - 163
+19:03:38.034 INFO (Graph.java:747)     Graphwide - 1
+19:03:38.034 INFO (Graph.java:747)     HopZeroTime - 116
+19:03:38.036 INFO (Graph.java:582) Main graph size: |V|=25065 |E|=61608
+19:03:38.036 INFO (Graph.java:583) Writing graph /home/mabu/programiranje/forotp/data/Graph.obj ...
+19:03:38.701 INFO (Graph.java:621) Graph written.
+19:03:38.708 INFO (GraphBuilderMain.java:62) Total graph build time: 29.13 seconds
+
+
+real	0m29.353s
+user	0m42.600s
+sys	0m1.117s
+
+With STRTREE and envelope expanded 0.5
+19:06:04.360 INFO (NEDGraphBuilderImpl.java:356) Missing 861 edges
+19:06:04.360 INFO (TransitToStreetNetworkGraphBuilderImpl.java:44) Linking transit stops to streets...
+19:06:04.974 INFO (PruneFloatingIslands.java:77) Pruning isolated islands in street network
+19:06:05.046 INFO (StreetUtils.java:129) 164 sub graphs found
+19:06:05.134 WARN (StreetUtils.java:151) Removed edgeless vertices after pruning islands
+19:06:05.134 INFO (TransitToStreetNetworkGraphBuilderImpl.java:44) Linking transit stops to streets...
+19:06:05.373 INFO (Graph.java:741) Summary (number of each type of annotation):
+19:06:05.378 INFO (Graph.java:747)     GraphConnectivity - 163
+19:06:05.378 INFO (Graph.java:747)     HopZeroTime - 116
+19:06:05.378 INFO (Graph.java:747)     ElevationFlattened - 3374
+19:06:05.378 INFO (Graph.java:747)     Graphwide - 1
+19:06:05.381 INFO (Graph.java:582) Main graph size: |V|=25065 |E|=61608
+19:06:05.381 INFO (Graph.java:583) Writing graph /home/mabu/programiranje/forotp/data/Graph.obj ...
+19:06:06.035 INFO (Graph.java:621) Graph written.
+19:06:06.042 INFO (GraphBuilderMain.java:62) Total graph build time: 29.27 seconds
+
+real	0m29.489s
+user	0m42.907s
+sys	0m0.893s
+
+With STRTREE and envelope expanded 0.3
+19:11:02.970 INFO (NEDGraphBuilderImpl.java:356) Missing 861 edges
+19:11:02.970 INFO (TransitToStreetNetworkGraphBuilderImpl.java:44) Linking transit stops to streets...
+19:11:03.606 INFO (PruneFloatingIslands.java:77) Pruning isolated islands in street network
+19:11:03.678 INFO (StreetUtils.java:129) 164 sub graphs found
+19:11:03.766 WARN (StreetUtils.java:151) Removed edgeless vertices after pruning islands
+19:11:03.766 INFO (TransitToStreetNetworkGraphBuilderImpl.java:44) Linking transit stops to streets...
+19:11:03.999 INFO (Graph.java:741) Summary (number of each type of annotation):
+19:11:04.004 INFO (Graph.java:747)     ElevationFlattened - 3374
+19:11:04.004 INFO (Graph.java:747)     GraphConnectivity - 163
+19:11:04.004 INFO (Graph.java:747)     Graphwide - 1
+19:11:04.004 INFO (Graph.java:747)     HopZeroTime - 116
+19:11:04.006 INFO (Graph.java:582) Main graph size: |V|=25065 |E|=61608
+19:11:04.007 INFO (Graph.java:583) Writing graph /home/mabu/programiranje/forotp/data/Graph.obj ...
+19:11:04.674 INFO (Graph.java:621) Graph written.
+19:11:04.681 INFO (GraphBuilderMain.java:62) Total graph build time: 29.02 seconds
+
+real	0m29.246s
+user	0m42.740s
+sys	0m0.910s
