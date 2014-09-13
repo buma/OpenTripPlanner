@@ -480,6 +480,12 @@
             <artifactId>javax.inject</artifactId>
             <version>1</version>
         </dependency>
+         <!-- fast serialization -->
+         <dependency>
+             <groupId>de.ruedigermoeller</groupId>
+             <artifactId>fst</artifactId>
+             <version>1.58</version>
+        </dependency>
         <!-- OBA GTFS loader -->
         <dependency>
             <groupId>org.onebusaway</groupId>
