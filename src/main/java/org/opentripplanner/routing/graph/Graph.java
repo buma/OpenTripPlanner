@@ -83,6 +83,7 @@ import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import de.ruedigermoeller.serialization.FSTObjectInput;
 import de.ruedigermoeller.serialization.FSTObjectOutput;
+import org.opentripplanner.util.fast_serial.MyFSTConfiguration;
 
 /**
  * A graph is really just one or more indexes into a set of vertexes. It used to keep edgelists for each vertex, but those are in the vertex now.
@@ -557,7 +558,8 @@ public class Graph implements Serializable {
      */
     public static Graph load(ObjectInputStream in, LoadLevel level) throws IOException,
             ClassNotFoundException {
-        return load(new FSTObjectInput(in), level, new DefaultStreetVertexIndexFactory());
+        FSTObjectInput fstin = MyFSTConfiguration.getInstance().getObjectInput(in);
+        return load(fstin, level, new DefaultStreetVertexIndexFactory());
     }
     
     /** 
@@ -672,7 +674,7 @@ public class Graph implements Serializable {
     public void save(File file) throws IOException {
         LOG.info("Main graph size: |V|={} |E|={}", this.countVertices(), this.countEdges());
         LOG.info("Writing graph " + file.getAbsolutePath() + " ...");
-        FSTObjectOutput out = new FSTObjectOutput(new BufferedOutputStream(
+        FSTObjectOutput out = MyFSTConfiguration.getInstance().getObjectOutput(new BufferedOutputStream(
                 new FileOutputStream(file)));
         try {
             save(out);

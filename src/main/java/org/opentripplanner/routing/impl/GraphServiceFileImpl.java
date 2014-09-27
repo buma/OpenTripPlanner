@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.io.ByteStreams;
 import de.ruedigermoeller.serialization.FSTObjectInput;
+import org.opentripplanner.util.fast_serial.MyFSTConfiguration;
 
 /**
  * A class implementing loading graph from files or resources, but which does not load anything by
@@ -165,7 +166,8 @@ public class GraphServiceFileImpl implements GraphService {
         LOG.info("Loading graph...");
         Graph graph = null;
         try {
-            graph = Graph.load(new FSTObjectInput(is), loadLevel, indexFactory);
+            FSTObjectInput fstin = MyFSTConfiguration.getInstance().getObjectInput(is);
+            graph = Graph.load(fstin, loadLevel, indexFactory);
         } catch (Exception ex) {
             LOG.error("Exception while loading graph from {}.", graphFileName);
             ex.printStackTrace();
