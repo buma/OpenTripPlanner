@@ -13,6 +13,7 @@
 
 package org.opentripplanner.routing.impl;
 
+import com.google.common.io.ByteStreams;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -26,9 +27,9 @@ import java.util.Map;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.geotools.referencing.factory.DeferredAuthorityFactory;
 import org.geotools.util.WeakCollectionCleaner;
+import org.nustaq.serialization.FSTObjectInput;
 import org.opentripplanner.routing.error.GraphNotFoundException;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Graph.LoadLevel;
@@ -36,12 +37,9 @@ import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.StreetVertexIndexFactory;
 import org.opentripplanner.updater.GraphUpdaterConfigurator;
 import org.opentripplanner.updater.PropertiesPreferences;
+import org.opentripplanner.util.fast_serial.MyFSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.io.ByteStreams;
-import de.ruedigermoeller.serialization.FSTObjectInput;
-import org.opentripplanner.util.fast_serial.MyFSTConfiguration;
 
 /**
  * A class implementing loading graph from files or resources, but which does not load anything by

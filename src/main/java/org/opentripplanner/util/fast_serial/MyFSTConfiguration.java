@@ -7,7 +7,7 @@
 package org.opentripplanner.util.fast_serial;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import de.ruedigermoeller.serialization.FSTConfiguration;
+import org.nustaq.serialization.FSTConfiguration;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.graph.Vertex;
 

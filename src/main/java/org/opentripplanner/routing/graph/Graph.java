@@ -13,8 +13,15 @@
 
 package org.opentripplanner.routing.graph;
 
-import static org.opentripplanner.common.IterableLibrary.filter;
-
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multiset;
+import com.google.common.collect.Sets;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.Geometry;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -40,7 +47,9 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
-
+import java.util.concurrent.TimeUnit;
+import org.nustaq.serialization.FSTObjectInput;
+import org.nustaq.serialization.FSTObjectOutput;
 import org.onebusaway.gtfs.impl.calendar.CalendarServiceImpl;
 import org.onebusaway.gtfs.model.Agency;
 import org.onebusaway.gtfs.model.AgencyAndId;
@@ -51,6 +60,7 @@ import org.opentripplanner.analyst.core.GeometryIndex;
 import org.opentripplanner.analyst.request.SampleFactory;
 import org.opentripplanner.api.resource.GraphMetadata;
 import org.opentripplanner.common.IterableLibrary;
+import static org.opentripplanner.common.IterableLibrary.filter;
 import org.opentripplanner.common.MavenVersion;
 import org.opentripplanner.common.geometry.GraphUtils;
 import org.opentripplanner.graph_builder.annotation.GraphBuilderAnnotation;
@@ -69,21 +79,9 @@ import org.opentripplanner.routing.vertextype.PatternArriveVertex;
 import org.opentripplanner.updater.GraphUpdaterConfigurator;
 import org.opentripplanner.updater.GraphUpdaterManager;
 import org.opentripplanner.updater.stoptime.TimetableSnapshotSource;
+import org.opentripplanner.util.fast_serial.MyFSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multiset;
-import com.google.common.collect.Sets;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Envelope;
-import com.vividsolutions.jts.geom.Geometry;
-import de.ruedigermoeller.serialization.FSTObjectInput;
-import de.ruedigermoeller.serialization.FSTObjectOutput;
-import org.opentripplanner.util.fast_serial.MyFSTConfiguration;
 
 /**
  * A graph is really just one or more indexes into a set of vertexes. It used to keep edgelists for each vertex, but those are in the vertex now.
@@ -538,7 +536,7 @@ public class Graph implements Serializable {
     public static Graph load(ClassLoader classLoader, File file, LoadLevel level)
             throws IOException, ClassNotFoundException {
         LOG.info("Reading graph " + file.getAbsolutePath() + " with alternate classloader ...");
-        FSTObjectInput in = new GraphObjectInputStream(new BufferedInputStream(
+        ObjectInputStream in = new GraphObjectInputStream(new BufferedInputStream(
                 new FileInputStream(file)), classLoader);
         return load(in, level);
     }
@@ -716,7 +714,7 @@ public class Graph implements Serializable {
     }
 
     /* deserialization for org.opentripplanner.customize */
-    private static class GraphObjectInputStream extends FSTObjectInput {
+    private static class GraphObjectInputStream extends ObjectInputStream {
         ClassLoader classLoader;
 
         public GraphObjectInputStream(InputStream in, ClassLoader classLoader) throws IOException {

@@ -8,15 +8,14 @@ package org.opentripplanner.util.fast_serial;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
-import de.ruedigermoeller.serialization.FSTBasicObjectSerializer;
-import de.ruedigermoeller.serialization.FSTClazzInfo;
-import de.ruedigermoeller.serialization.FSTObjectInput;
-import de.ruedigermoeller.serialization.FSTObjectOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import org.nustaq.serialization.FSTBasicObjectSerializer;
+import org.nustaq.serialization.FSTClazzInfo;
+import org.nustaq.serialization.FSTObjectOutput;
 import org.opentripplanner.common.TurnRestriction;
 import org.opentripplanner.routing.alertpatch.Alert;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
@@ -45,7 +44,7 @@ public class FSTPlainStreetEdgeSerializer extends FSTBasicObjectSerializer {
         out.writeDouble(pse.getLength());
         out.writeObjectInternal(pse.getPermission(), new Class[] {StreetTraversalPermission.class});
         
-        out.writeFFloat(pse.getCarSpeed());
+        out.writeFloat(pse.getCarSpeed());
         
         out.writeObjectInternal(pse.getElevationProfileSegment(), new Class[] {ElevationProfileSegment.class});
         String label = pse.getLabel();

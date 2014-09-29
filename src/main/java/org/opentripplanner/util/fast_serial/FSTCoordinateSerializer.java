@@ -7,10 +7,10 @@
 package org.opentripplanner.util.fast_serial;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import de.ruedigermoeller.serialization.FSTBasicObjectSerializer;
-import de.ruedigermoeller.serialization.FSTClazzInfo;
-import de.ruedigermoeller.serialization.FSTObjectOutput;
 import java.io.IOException;
+import org.nustaq.serialization.FSTBasicObjectSerializer;
+import org.nustaq.serialization.FSTClazzInfo;
+import org.nustaq.serialization.FSTObjectOutput;
 
 /**
  *
@@ -22,8 +22,10 @@ public class FSTCoordinateSerializer extends FSTBasicObjectSerializer {
     public void writeObject(FSTObjectOutput out, Object toWrite,
             FSTClazzInfo fstci, FSTClazzInfo.FSTFieldInfo fstfi, int i) throws IOException {
         Coordinate cor = (Coordinate) toWrite;
-        out.writeFDouble(cor.x);
-        out.writeFDouble(cor.y);
+        //out.writeStringUTF("<C");
+        out.writeDouble(cor.x);
+        out.writeDouble(cor.y);        
+        //out.writeStringUTF("C>");
         //out.writeFDouble(cor.z);
     }
     

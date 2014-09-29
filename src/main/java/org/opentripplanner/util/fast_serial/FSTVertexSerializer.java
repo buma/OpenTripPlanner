@@ -6,10 +6,10 @@
 
 package org.opentripplanner.util.fast_serial;
 
-import de.ruedigermoeller.serialization.FSTBasicObjectSerializer;
-import de.ruedigermoeller.serialization.FSTClazzInfo;
-import de.ruedigermoeller.serialization.FSTObjectOutput;
 import java.io.IOException;
+import org.nustaq.serialization.FSTBasicObjectSerializer;
+import org.nustaq.serialization.FSTClazzInfo;
+import org.nustaq.serialization.FSTObjectOutput;
 import org.opentripplanner.routing.graph.Vertex;
 
 /**
@@ -27,12 +27,14 @@ public class FSTVertexSerializer extends FSTBasicObjectSerializer {
         if(label == null) {
             label = new String();
         }
+        //out.writeStringUTF("<V");
         //doesn't like null
         out.writeStringUTF(label);
         out.writeStringUTF(v.getName());
-        out.writeFDouble(v.getX());
-        out.writeFDouble(v.getY());
+        out.writeDouble(v.getX());
+        out.writeDouble(v.getY());
         out.writeDouble(v.getDistanceToNearestTransitStop());
+        //out.writeStringUTF("V>");
         //incoming, outgoing, index and maxIndex are created during read
     }
     
