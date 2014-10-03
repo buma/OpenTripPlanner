@@ -28,7 +28,7 @@ import org.opentripplanner.routing.util.ElevationProfileSegment;
  *
  * @author mabu
  */
-public class FSTPlainStreetEdgeSerializer extends FSTBasicObjectSerializer {
+public class FSTPlainStreetEdgeSerializer extends FSTEdgeSerializer {
 
     @Override
     public void writeObject(FSTObjectOutput out, Object toWrite,
@@ -36,10 +36,8 @@ public class FSTPlainStreetEdgeSerializer extends FSTBasicObjectSerializer {
             int i) throws IOException {
         PlainStreetEdge pse = (PlainStreetEdge) toWrite;
         //out.writeStringUTF("<psSTART");
-        out.writeObjectInternal(pse.getFromVertex(), new Class[] {Vertex.class});
-        out.writeObjectInternal(pse.getToVertex(), new Class[] {Vertex.class});
-        out.writeInt(pse.getId());
-
+        //Writes edge part
+        super.writeObject(out, toWrite, fstci, referencedBy, i);
         out.writeObjectInternal(Arrays.asList(pse.getGeometry().getCoordinates()), new Class[]{ArrayList.class, Coordinate.class});
         out.writeStringUTF(pse.getName());
         out.writeDouble(pse.getLength());
@@ -65,12 +63,65 @@ public class FSTPlainStreetEdgeSerializer extends FSTBasicObjectSerializer {
         out.writeBoolean(pse.isNoThruTraffic());
         out.writeBoolean(pse.isStairs());
         out.writeBoolean(pse.isToll());
-        out.writeObjectInternal(pse.getNotes(), new Class[] {Set.class, Alert.class});
+        out.writeObjectInternal(pse.getWheelchairNotes(), new Class[] {Set.class, Alert.class});
         out.writeObject(pse.getTurnRestrictions(), new Class[] {ArrayList.class, TurnRestriction.class});
         //out.writeStringUTF("psEND>");
+        //System.err.println("PSE serial");
         
         
     }   
+
+    /*
+    @Override
+    public Object instantiate(Class objectClass, FSTObjectInput in, FSTClazzInfo serializationInfo, FSTClazzInfo.FSTFieldInfo referencee, int streamPositioin) throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+        int id = in.readInt();
+        StreetVertex fromv = (StreetVertex) in.readObjectInternal(IntersectionVertex.class, StreetVertex.class);
+        StreetVertex tov = (StreetVertex) in.readObjectInternal(IntersectionVertex.class, StreetVertex.class);
+        Object cor = in.readObjectInternal(ArrayList.class, Coordinate.class);
+        List<Coordinate> coordinates = (List<Coordinate>) cor;
+        Coordinate[] coordinatesArr = new Coordinate[coordinates.size()];
+        coordinatesArr = coordinates.toArray(coordinatesArr);
+        String name = in.readStringUTF();
+        double length = in.readDouble();
+        StreetTraversalPermission permission = (StreetTraversalPermission) in.readObjectInternal(StreetTraversalPermission.class);
+        float carSpeed = in.readFFloat();
+        ElevationProfileSegment ele = (ElevationProfileSegment) in.readObjectInternal(ElevationProfileSegment.class);
+        String label = in.readStringUTF();
+        if (label.isEmpty()) {
+            label = null;
+        }
+        int streetClass = in.readInt();
+        Set<Alert> notes = (Set<Alert>) in.readObjectInternal(Set.class, Alert.class);
+        boolean back = in.readBoolean();
+        boolean wheelchair = in.readBoolean();
+        boolean roundabout = in.readBoolean();
+        boolean bogusName = in.readBoolean();
+        boolean traffic = in.readBoolean();
+        boolean stairs = in.readBoolean();
+        boolean toll = in.readBoolean();
+        Set<Alert> wheelChairnotes = (Set<Alert>) in.readObjectInternal(Set.class, Alert.class);
+        List<TurnRestriction> turnRestrictions = (List<TurnRestriction>) in.readObjectInternal(ArrayList.class, TurnRestriction.class);
+        PlainStreetEdge res = new PlainStreetEdge(fromv, tov,
+                GeometryUtils.getGeometryFactory().createLineString(coordinatesArr),
+                name, length, permission, back, carSpeed);
+        //res.setElevationProfile(ele.getElevationProfile(), toll)
+        res.setLabel(label);
+        res.setWheelchairAccessible(wheelchair);
+        res.setStreetClass(streetClass);
+        res.setRoundabout(roundabout);
+        res.setNote(notes);
+        res.setHasBogusName(bogusName);
+        res.setNoThruTraffic(traffic);
+        res.setStairs(stairs);
+        res.setToll(toll);
+        res.setWheelchairNote(wheelChairnotes);
+        for(TurnRestriction turnRestriction: turnRestrictions) {
+            res.addTurnRestriction(turnRestriction);
+        }
+        in.registerObject(res, streamPositioin, serializationInfo, referencee);
+        return res;
+    }
+    */   
     
     
 }

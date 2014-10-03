@@ -10,6 +10,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import de.ruedigermoeller.serialization.FSTConfiguration;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.routing.vertextype.IntersectionVertex;
 
 /**
  *
@@ -21,9 +22,10 @@ public class MyFSTConfiguration {
     
     static {
         //singletonConf.registerClass(PlainStreetEdge.class);
-        singletonConf.registerSerializer(PlainStreetEdge.class, new FSTPlainStreetEdgeSerializer(), false);
+        //singletonConf.registerSerializer(PlainStreetEdge.class, new FSTPlainStreetEdgeSerializer(), false);
         singletonConf.registerSerializer(Vertex.class, new FSTVertexSerializer(), false);
         singletonConf.registerSerializer(Coordinate.class, new FSTCoordinateSerializer(), false);
+        singletonConf.registerSerializer(IntersectionVertex.class, new FSTIntersectionVertexSerializer(), false);
     }
     
     public static FSTConfiguration getInstance() {

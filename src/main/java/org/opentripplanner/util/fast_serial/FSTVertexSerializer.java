@@ -22,6 +22,7 @@ public class FSTVertexSerializer extends FSTBasicObjectSerializer {
     public void writeObject(FSTObjectOutput out, Object toWrite,
             FSTClazzInfo fstci, FSTClazzInfo.FSTFieldInfo fstfi, int i) throws IOException {
         Vertex v = (Vertex) toWrite;
+        out.writeInt(v.getIndex());
         out.writeInt(v.getGroupIndex());
         String label = v.getLabel();
         if(label == null) {
@@ -34,6 +35,7 @@ public class FSTVertexSerializer extends FSTBasicObjectSerializer {
         out.writeFDouble(v.getY());
         out.writeDouble(v.getDistanceToNearestTransitStop());
         //incoming, outgoing, index and maxIndex are created during read
+        //System.err.println("Vertex serial");
     }
     
 }
