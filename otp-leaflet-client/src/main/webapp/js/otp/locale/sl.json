@@ -87,6 +87,7 @@
     "Stay on board": "Ostanite v vozilu",
     "Alight": "Izstop",
     "at": "na",
+    "Alert for Route": "Obvestilo za linijo",
     "%(currency)s %(price)s": "%(price)s %(currency)s",
     "Start: %(location)s at %(time_date)s": "Začetek: %(location)s ob %(time_date)s",
     "Board": "Vstop",

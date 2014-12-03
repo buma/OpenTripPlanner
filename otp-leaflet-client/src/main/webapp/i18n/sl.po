@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: OpenTripPlanner VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-06-27 12:39+0200\n"
+"POT-Creation-Date: 2014-12-03 17:16+0100\n"
 "PO-Revision-Date: 2014-06-16 10:54+0200\n"
 "Last-Translator: Marko Burjek\n"
 "Language-Team: Slovenian <lugos-slo@lugos.si>\n"
@@ -470,6 +470,10 @@ msgstr "Izstop"
 #: otp-leaflet-client/src/main/webapp/js/otp/modules/planner/ItinerariesWidget.js:645
 msgid "at"
 msgstr "na"
+
+#: otp-leaflet-client/src/main/webapp/js/otp/modules/planner/ItinerariesWidget.js:687
+msgid "Alert for Route"
+msgstr "Obvestilo za linijo"
 
 #. Fare Currency Fare price
 #: otp-leaflet-client/src/main/webapp/js/otp/modules/planner/Itinerary.js:102
