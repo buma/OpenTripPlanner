@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: OpenTripPlanner VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-07-10 12:11+0200\n"
+"POT-Creation-Date: 2014-12-03 17:16+0100\n"
 "PO-Revision-Date: 2014-06-25 11:38+0200\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: en <LL@li.org>\n"
@@ -470,6 +470,10 @@ msgstr "Alight"
 #: src/client/js/otp/modules/planner/ItinerariesWidget.js:645
 msgid "at"
 msgstr "at"
+
+#: otp-leaflet-client/src/main/webapp/js/otp/modules/planner/ItinerariesWidget.js:687
+msgid "Alert for Route"
+msgstr "Alert for Route"
 
 #. Fare Currency Fare price
 #: src/client/js/otp/modules/planner/Itinerary.js:102

@@ -667,7 +667,7 @@ otp.widgets.ItinerariesWidget =
                 for(var i = 0; i < leg.alerts.length; i++) {
                     var alert = leg.alerts[i];
                     
-                    var alertDiv = ich['otp-planner-alert']({ alert: alert, leg: leg }).appendTo(legDiv);
+                    var alertDiv = ich['otp-planner-alert']({ alert: alert, leg: leg, alertfor: _tr("Alert for Route") }).appendTo(legDiv);
                     alertDiv.find('.otp-itin-alert-description').hide();
                     
                     alertDiv.find('.otp-itin-alert-toggleButton').data('div', alertDiv).click(function() {
