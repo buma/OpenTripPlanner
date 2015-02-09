@@ -81,6 +81,15 @@ public class StreetEdge extends Edge implements Cloneable {
     /** back, roundabout, stairs, ... */
     private byte flags;
 
+    //Flags for cycleway detection. Currently separated from other flags
+    private static final int PATH_FLAG_INDEX = 0;
+    private static final int BIKE_PATH_FLAG_INDEX = 1;
+    private static final int FOOT_BRIDGE_FLAG_INDEX = 2;
+    private static final int TRACK_FLAG_INDEX = 3;
+
+    /** flags for cycleway detection **/
+    private byte cycleway_detection_flags;
+
     /**
      * Length is stored internally as 32-bit fixed-point (millimeters). This allows edges of up to ~2100km.
      * Distances used in calculations and exposed outside this class are still in double-precision floating point meters.
@@ -645,7 +654,24 @@ public class StreetEdge extends Edge implements Cloneable {
 	    flags = BitSetUtils.set(flags, NOTHRUTRAFFIC_FLAG_INDEX, noThruTraffic);
 	}
 
-	/**
+        /** Cycleway detection flags **/
+        public void setPath(boolean path) {
+            cycleway_detection_flags = BitSetUtils.set(cycleway_detection_flags, PATH_FLAG_INDEX, path);
+        }
+
+        public void setBikePath(boolean bike_path) {
+            cycleway_detection_flags = BitSetUtils.set(cycleway_detection_flags, BIKE_PATH_FLAG_INDEX, bike_path);
+        }
+
+        public void setTrack(boolean track) {
+            cycleway_detection_flags = BitSetUtils.set(cycleway_detection_flags, TRACK_FLAG_INDEX, track);
+        }
+
+        public void setFootBridge(boolean footBridge) {
+            cycleway_detection_flags = BitSetUtils.set(cycleway_detection_flags, FOOT_BRIDGE_FLAG_INDEX, footBridge);
+        }
+
+        /**
 	 * This street is a staircase
 	 */
 	public boolean isStairs() {
@@ -671,6 +697,23 @@ public class StreetEdge extends Edge implements Cloneable {
 	public void setSlopeOverride(boolean slopeOverride) {
 	    flags = BitSetUtils.set(flags, SLOPEOVERRIDE_FLAG_INDEX, slopeOverride);
 	}
+        
+        /** Cycleway detection flags **/
+        public boolean isPath() {
+            return BitSetUtils.get(cycleway_detection_flags, PATH_FLAG_INDEX);
+        }
+
+        public boolean isBikePath() {
+            return BitSetUtils.get(cycleway_detection_flags, BIKE_PATH_FLAG_INDEX);
+        }
+
+        public boolean isTrack() {
+            return BitSetUtils.get(cycleway_detection_flags, TRACK_FLAG_INDEX);
+        }
+
+        public boolean isFootBridge() {
+            return BitSetUtils.get(cycleway_detection_flags, FOOT_BRIDGE_FLAG_INDEX);
+        }
 
     /**
      * Return the azimuth of the first segment in this edge in integer degrees clockwise from South.

@@ -8,9 +8,8 @@ package org.opentripplanner.graph_builder.impl.cyclewayDisable;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
@@ -23,7 +22,6 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -36,32 +34,17 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.logging.Level;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
-import org.geotools.data.simple.SimpleFeatureCollection;
-import org.geotools.feature.DefaultFeatureCollection;
-import org.geotools.feature.FeatureCollections;
-import org.geotools.feature.simple.SimpleFeatureBuilder;
-import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
-import org.geotools.referencing.crs.DefaultGeographicCRS;
-import org.opengis.feature.simple.SimpleFeatureType;
-import org.opentripplanner.api.model.GeometryAdapter;
-import static org.opentripplanner.common.IterableLibrary.filter;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.model.T2;
+import org.opentripplanner.graph_builder.impl.osm.OSMWayIDNamer;
 import org.opentripplanner.graph_builder.services.GraphBuilder;
-import org.opentripplanner.model.json_serialization.EdgeSetJSONSerializer;
-import org.opentripplanner.model.json_serialization.GeoJSONDeserializer;
-import org.opentripplanner.model.json_serialization.GeoJSONSerializer;
 import org.opentripplanner.model.json_serialization.SerializerUtils;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.edgetype.PlainStreetEdge;
+import org.opentripplanner.routing.edgetype.AreaEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -109,7 +92,25 @@ public class cycleDisableBuilder implements GraphBuilder {
     public void setPath(File path) {
         _path = path;
     }
-    
+
+    /**
+     * Gets name part from streetName which is osmwayid:::name
+     * @param name Street name
+     * @return 
+     */
+    private String getName(String name) {
+        return name.split(":::")[1];
+    }
+
+    /**
+     * Gets label part from streetName which is osmwayid:::name
+     * @param name OSM way ID
+     * @return 
+     */
+    private String getLabel(String name) {
+        return name.split(":::")[0];
+    }
+
     private static double makeAzimuthPositive(double azimuth) {
         if(azimuth < 0) {
             return azimuth + 180.0;
@@ -129,14 +130,14 @@ public class cycleDisableBuilder implements GraphBuilder {
     }
     
     /*private Geometry expandCycleway(PlainStreetEdge cycleway) {
-        LOG.info("Expanding {} {}", cycleway.getName(), cycleway.getLabel());
+        LOG.info("Expanding {} {}", getName(cycleway.getName()), cycleway.getLabel());
     }*/
     
     private static boolean is_cycleway(StreetEdge current_street) {
         return (!current_street.canTraverse(driving) && current_street.canTraverse(cycling)
-                        && (current_street.getName().equals("path")
-                        || current_street.getName().equals("bike path")
-                        || current_street.getName().equals("footbridge")));
+                        && (current_street.isPath()
+                        || current_street.isBikePath()
+                        || current_street.isFootBridge()));
     }
 
     @Override
@@ -162,8 +163,8 @@ public class cycleDisableBuilder implements GraphBuilder {
         SimpleFeatureBuilder builder = new SimpleFeatureBuilder(CYCLE);*/
         
         Collection<Edge> allEdges = graph.getEdges();
-        List<PlainStreetEdge> streets = Lists.newArrayList(filter(allEdges, PlainStreetEdge.class));
-        List<PlainStreetEdge> cycleways = new ArrayList<PlainStreetEdge>();
+        List<StreetEdge> streets = Lists.newArrayList(Iterables.filter(allEdges, StreetEdge.class));
+        List<StreetEdge> cycleways = new ArrayList<StreetEdge>();
         List<StreetFeature> cycleways_features = new ArrayList<StreetFeature>();
         
         List<StreetEdge> candidateStreets = new ArrayList<StreetEdge>(100);
@@ -177,10 +178,10 @@ public class cycleDisableBuilder implements GraphBuilder {
         //SimpleFeatureCollection features = new DefaultFeatureCollection(null, null);
         
 
-        for(PlainStreetEdge current_street: streets) {
-            if (!current_street.back &&
-                    !current_street.getLabel().contains(":area:") &&
-                    !current_street.getName().equals("track")) {
+        for(StreetEdge current_street: streets) {
+            if (!current_street.isBack() &&
+                    !(current_street instanceof AreaEdge) &&
+                    !(current_street.isTrack())) {
                 if (is_cycleway(current_street)
                         && (current_street.getDistance() > 40)) {
                     /*if (cycleways_features.size() > 20) {
@@ -192,8 +193,8 @@ public class cycleDisableBuilder implements GraphBuilder {
                     }*/
                     cycleways.add(current_street);
                     StreetFeature feature = StreetFeature.createCycleFeature(
-                            current_street.getName(), current_street.getPermission().toString(), current_street.getGeometry());
-                    feature.addPropertie("label", current_street.getLabel());
+                            getName(current_street.getName()), current_street.getPermission().toString(), current_street.getGeometry());
+                    feature.addPropertie("label", getLabel(current_street.getName()));
                     feature.addPropertie("azimuth", new Double(current_street.getAzimuth()));
                     //feature.addPropertie("back", new Boolean(current_street.back).toString());
                     feature.addPropertie("distance", new Double(current_street.getDistance()).toString());
@@ -201,7 +202,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                     //LOG.info("OSMID:{}, BACK:{}", current_street.getLabel(), current_street.back);
 
                     //cycleways_features.add(feature);
-                    /*builder.add(current_street.getName());
+                    /*builder.add(getName(current_street.getName()));
                      builder.add(current_street.getPermission().toString());
                      builder.add("#00FF00");
                      builder.add(current_street.getGeometry());*/
@@ -213,7 +214,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                     envelope = geometry.getEnvelopeInternal();
                     this.index.insert(envelope, current_street);
                     
-                    /*StreetFeature feature1 = StreetFeature.createRoadFeature(current_street.getName(),
+                    /*StreetFeature feature1 = StreetFeature.createRoadFeature(getName(current_street.getName()),
                             current_street.getPermission().toString(),
                             current_street.getGeometry());
                     feature1.addPropertie("label", current_street.getLabel());
@@ -227,10 +228,10 @@ public class cycleDisableBuilder implements GraphBuilder {
         seen_cycleway = new HashSet<Geometry>(cycleways.size());
         
         //sort on length:
-        Comparator<PlainStreetEdge> comparator = new Comparator<PlainStreetEdge>() {
+        Comparator<StreetEdge> comparator = new Comparator<StreetEdge>() {
 
             @Override
-            public int compare(PlainStreetEdge o1, PlainStreetEdge o2) {
+            public int compare(StreetEdge o1, StreetEdge o2) {
                 return new Double(o1.getDistance()).compareTo(o2.getDistance());
             }
         };
@@ -238,8 +239,8 @@ public class cycleDisableBuilder implements GraphBuilder {
         Collections.sort(cycleways, Collections.reverseOrder(comparator));
         
         //removes cycleways that are at graph edge
-        cycleways.remove(0); //removes cycleway in kamnica
-        cycleways.remove(0); //removes cycleway in duplek
+        //cycleways.remove(0); //removes cycleway in kamnica
+        //cycleways.remove(0); //removes cycleway in duplek
         
         LOG.info("{} cycle streets", cycleways.size());
         LOG.info("{} main streets", this.index.size());
@@ -248,22 +249,22 @@ public class cycleDisableBuilder implements GraphBuilder {
         
         int number_of_processed_ways = 0;
         
-        for (PlainStreetEdge current_cycleway: cycleways) {
+        for (StreetEdge current_cycleway: cycleways) {
             if (seen_cycleway.contains(current_cycleway.getGeometry())) {
                 LOG.info("Skipping seen cycleway");
                 continue;
             }
             seen_cycleway.add(current_cycleway.getGeometry());
-            LOG.info("Searching street near:{} {} {}", current_cycleway.getName(),
-                    current_cycleway.getLabel(),
+            LOG.info("Searching street near:{} {} {}", getName(current_cycleway.getName()),
+                    getLabel(current_cycleway.getName()),
                     current_cycleway.getDistance());
             distanceTreshold = DISTANCE_THRESHOLD;
             Envelope envelope = current_cycleway.getGeometry().getEnvelopeInternal();
-            List<PlainStreetEdge> nearbyEdges = index.query(envelope);
+            List<StreetEdge> nearbyEdges = index.query(envelope);
             
             StreetFeature feature = StreetFeature.createCycleFeature(
-                            current_cycleway.getName(), current_cycleway.getPermission().toString(), current_cycleway.getGeometry());
-                    feature.addPropertie("label", current_cycleway.getLabel());
+                            getName(current_cycleway.getName()), current_cycleway.getPermission().toString(), current_cycleway.getGeometry());
+                    feature.addPropertie("label", getLabel(current_cycleway.getName()));
                     feature.addPropertie("azimuth", new Double(current_cycleway.getAzimuth()));
                     //feature.addPropertie("back", new Boolean(current_street.back).toString());
                     feature.addPropertie("distance", new Double(current_cycleway.getDistance()).toString());
@@ -291,7 +292,7 @@ public class cycleDisableBuilder implements GraphBuilder {
             
            // LOG.info("Found {} streets", nearbyEdges.size());
             
-            List<PlainStreetEdge> street_candidates = new ArrayList<PlainStreetEdge>(nearbyEdges.size());
+            List<StreetEdge> street_candidates = new ArrayList<StreetEdge>(nearbyEdges.size());
             boolean hasCandidateEdges = !nearbyEdges.isEmpty();
             //if(current_street.getLabel().equals("osm:way:266592491")) {
             /*Geometry polygon = GeometryUtils.getGeometryFactory().toGeometry(envelope);
@@ -300,13 +301,13 @@ public class cycleDisableBuilder implements GraphBuilder {
                 polygonFeature.addPropertie("found", hasCandidateEdges);
                 cycleways_features.add(polygonFeature); */
             //}
-            for (PlainStreetEdge nearStreet: nearbyEdges) {
+            for (StreetEdge nearStreet: nearbyEdges) {
                 
-                StreetFeature feature1 = StreetFeature.createRoadFeature(nearStreet.getName(),
+                StreetFeature feature1 = StreetFeature.createRoadFeature(getName(nearStreet.getName()),
                         nearStreet.getPermission().toString(),
                         nearStreet.getGeometry());
-                feature1.addPropertie("label", nearStreet.getLabel());
-                feature1.addPropertie("cycleway", current_cycleway.getLabel());
+                feature1.addPropertie("label", getLabel(nearStreet.getName()));
+                feature1.addPropertie("cycleway", getLabel(current_cycleway.getName()));
                 //feature1.addPropertie("distanceT", new Double(distanceTreshold).toString());
                 double compAzimuth = compareAzimuth(current_cycleway, nearStreet);
                 feature1.addPropertie("azimuth", nearStreet.getAzimuth());
@@ -402,7 +403,7 @@ public class cycleDisableBuilder implements GraphBuilder {
         for(Geometry cycleway_polygon: full_cycleway_polygons) {
             distanceTreshold = DISTANCE_THRESHOLD;
             Envelope envelope = cycleway_polygon.getEnvelopeInternal();
-            List<PlainStreetEdge> nearbyEdges = index.query(envelope);
+            List<StreetEdge> nearbyEdges = index.query(envelope);
             //LOG.info("Found good {} streets", nearbyEdges.size());
             
             //List<PlainStreetEdge> street_candidates = new ArrayList<PlainStreetEdge>(nearbyEdges.size());
@@ -411,21 +412,21 @@ public class cycleDisableBuilder implements GraphBuilder {
             StreetFeature polygon1 = StreetFeature.createPolygonFeature("envelope", polygon);
             street_candidate_feat.add(polygon1);*/
             boolean hasCandidateEdges = !nearbyEdges.isEmpty();
-            for (PlainStreetEdge nearStreet: nearbyEdges) {
+            for (StreetEdge nearStreet: nearbyEdges) {
                 if (geometry_streets.contains(nearStreet.getGeometry())) {
                     continue;
                 }
                 StreetFeature feature1 = StreetFeature.createRoadFeature(
-                    nearStreet.getName(),
+                    getName(nearStreet.getName()),
                     nearStreet.getPermission().toString(),
                     nearStreet.getGeometry()
                 );
-                feature1.addPropertie("label", nearStreet.getLabel());
-                feature1.addPropertie("length", nearStreet.getLength());
+                feature1.addPropertie("label", getLabel(nearStreet.getName()));
+                feature1.addPropertie("length", nearStreet.getDistance());
                 feature1.addPropertie("distance", cycleway_polygon.distance(nearStreet.getGeometry()));
                 if (cycleway_polygon.covers(nearStreet.getGeometry())) {
                     
-                    if (nearStreet.getLength() <= 15) {
+                    if (nearStreet.getDistance() <= 15) { //TODO: check if 15 is still OK because unit has changed
                         feature1.addPropertie("stroke", "#ADD8E6");
                         feature1.addPropertie("info", "to short");
                     }
@@ -464,15 +465,15 @@ public class cycleDisableBuilder implements GraphBuilder {
         for(Geometry cycleway_polygon: full_cycleway_polygons) {
             distanceTreshold = DISTANCE_THRESHOLD;
             Envelope envelope = cycleway_polygon.getEnvelopeInternal();
-            List<PlainStreetEdge> nearbyEdges = index.query(envelope);
-            for (PlainStreetEdge nearStreet: nearbyEdges) {
+            List<StreetEdge> nearbyEdges = index.query(envelope);
+            for (StreetEdge nearStreet: nearbyEdges) {
                 StreetFeature feature1 = StreetFeature.createRoadFeature(
-                    nearStreet.getName(),
+                    getName(nearStreet.getName()),
                     nearStreet.getPermission().toString(),
                     nearStreet.getGeometry()
                 );
-                feature1.addPropertie("label", nearStreet.getLabel());
-                feature1.addPropertie("length", nearStreet.getLength());
+                feature1.addPropertie("label", getLabel(nearStreet.getName()));
+                feature1.addPropertie("length", nearStreet.getDistance());
                 feature1.addPropertie("distance", cycleway_polygon.distance(nearStreet.getGeometry()));
                 if (cycleway_polygon.covers(nearStreet.getGeometry())) {
                     if (!(is_connected(nearStreet, geometry_streets))) {
@@ -490,7 +491,7 @@ public class cycleDisableBuilder implements GraphBuilder {
             try {
                 //PlainStreetEdge current_street = cycleways.get(0);
                 //StreetFeature geoStreet = StreetFeature.createCycleFeature(
-                //        current_street.getName(), current_street.getPermission().toString(), current_street.getGeometry());
+                //        getName(current_street.getName()), current_street.getPermission().toString(), current_street.getGeometry());
                 
                 ObjectMapper mapper = SerializerUtils.getMapper();
                 SimpleModule module = SerializerUtils.getSerializerModule();
@@ -526,11 +527,11 @@ public class cycleDisableBuilder implements GraphBuilder {
                 
                 Set<String> addedIds = new HashSet<String>();
                 for(StreetEdge cand_street_edge: candidateStreets) {
-                    if (!addedIds.contains(cand_street_edge.getLabel())) {
+                    if (!addedIds.contains(getLabel(cand_street_edge.getName()))) {
                         /*if(!(is_connected(cand_street_edge, geometry_streets))) {
                             continue;
                         }*/
-                        String wayID = cand_street_edge.getLabel().split(":")[2];
+                        String wayID = getLabel(cand_street_edge.getName()).split(":")[2];
                         if (addedIds.size() == 0) {
                             pw.print(wayID);
                         } else {
@@ -543,7 +544,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                             }
                         }
                         
-                        addedIds.add(cand_street_edge.getLabel());
+                        addedIds.add(getLabel(cand_street_edge.getName()));
                     }
                 }
                 pw.close();
@@ -583,7 +584,7 @@ public class cycleDisableBuilder implements GraphBuilder {
     }
 
     private LineString lengthen_cycleway(StreetEdge current_street,
-            List<PlainStreetEdge> street_candidates,
+            List<StreetEdge> street_candidates,
             List<StreetFeature> cycleways_features,
             boolean forward,
             ListIterator<StreetEdge> iter) {
@@ -601,7 +602,7 @@ public class cycleDisableBuilder implements GraphBuilder {
 
             @Override
             public int compare(T2<StreetEdge, Integer> o1, T2<StreetEdge, Integer> o2) {
-                return o1.getSecond().compareTo(o2.getSecond());
+                return o1.second.compareTo(o2.second);
             }
         };
         List<T2<StreetEdge, Integer>> candidates = new ArrayList<T2<StreetEdge, Integer>>(nextEdges.size());
@@ -611,9 +612,9 @@ public class cycleDisableBuilder implements GraphBuilder {
             }
                     StreetEdge sedge = (StreetEdge) edge;
                     if (!sedge.isReverseOf(current_street)) {
-//                        LOG.info("Found candidate edge:{} {}", sedge.getLabel(), sedge.getLength());
-                        StreetFeature candidateFeature = StreetFeature.createCycleFeature(sedge.getName(), sedge.getPermission().toString(), sedge.getGeometry());
-                        candidateFeature.addPropertie("label", sedge.getLabel());
+//                        LOG.info("Found candidate edge:{} {}", getLabel(sedge.getName()), sedge.getDistance());
+                        StreetFeature candidateFeature = StreetFeature.createCycleFeature(getName(sedge.getName()), sedge.getPermission().toString(), sedge.getGeometry());
+                        candidateFeature.addPropertie("label", getLabel(sedge.getName()));
                         candidateFeature.addPropertie("stroke", "#FFFF00");
                         candidateFeature.addPropertie("stroke-opacity", "0.5");
                         candidateFeature.addPropertie("stroke-width", "2.0");
@@ -634,7 +635,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                         //double distance = current_street.getGeometry().distance(sedge.getGeometry());
                         //candidateFeature.addPropertie("distanceFrom", distance);
                         
-                        if (current_street.getLabel().equals(sedge.getLabel())) {
+                        if (getLabel(current_street.getName()).equals(getLabel(sedge.getName()))) {
                             candidates.add(new T2(sedge, 100));
                         } else if (compAzimuth <= 10  && is_cycleway(sedge)) {
                             candidates.add(new T2(sedge, 80));
@@ -643,9 +644,9 @@ public class cycleDisableBuilder implements GraphBuilder {
                         }
                         
                         
-                        if (current_street.getLabel().equals(sedge.getLabel())
+                        if (getLabel(current_street.getName()).equals(getLabel(sedge.getName())) 
                                 || (compAzimuth <= 10  && is_cycleway(sedge))) {
-                            //LOG.info("Added edge:{}, {}", sedge.getLabel(), sedge.getLength());
+                            //LOG.info("Added edge:{}, {}", getLabel(sedge.getName()), sedge.getDistance());
                             /*if (forward) {
                                 iter.add(sedge);
                             } else {
@@ -675,8 +676,8 @@ public class cycleDisableBuilder implements GraphBuilder {
         //Collections.sort(candidates, t2_comp);
         try {
             T2<StreetEdge, Integer> bestCandidate = Collections.max(candidates, t2_comp);
-            StreetEdge sedge = bestCandidate.getFirst();
-            LOG.info("Best ca : {} {} {} ({}) {}", sedge.getLabel(), sedge.getLength(), compareAzimuth(current_street, sedge), bestCandidate.getSecond(), candidates.size());
+            StreetEdge sedge = bestCandidate.first;
+            LOG.info("Best ca : {} {} {} ({}) {}", getLabel(sedge.getName()), sedge.getDistance(), compareAzimuth(current_street, sedge), bestCandidate.second, candidates.size());
             if (forward) {
                 iter.add(sedge);
             } else {
@@ -713,8 +714,7 @@ public class cycleDisableBuilder implements GraphBuilder {
             }
         }
         return false;
-    }
-    
+    }    
 }
 
 
