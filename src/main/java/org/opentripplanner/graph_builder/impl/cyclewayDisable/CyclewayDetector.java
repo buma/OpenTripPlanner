@@ -30,10 +30,10 @@ public class CyclewayDetector {
     @Parameter(names = { "-h", "--help"}, description = "Print this help message and exit", help = true)
     private boolean help;
 
-    @Parameter(names = { "-g", "--graph"}, description = "path to the graph file", required = true)
-    private String graphPath;
+    @Parameter(names = { "-i", "--input"}, description = "path to the OSM file", required = true)
+    private String osmFilePath;
 
-    @Parameter(names = { "-o", "--out"}, description = "output file")
+    @Parameter(names = { "-o", "--out"}, description = "output folder")
     private String outPath;
     
     private JCommander jc;
@@ -54,6 +54,9 @@ public class CyclewayDetector {
         
         try {
             jc.parse(args);
+            if(!new File(outPath).isDirectory()) {
+                throw new Exception("\"" + outPath+"\" Is not a directory!");
+            }
         } catch (Exception e) {
             System.out.println(e.getMessage());
             jc.usage();
@@ -99,8 +102,8 @@ public class CyclewayDetector {
     }
 
     private void run() throws Exception {
-        LOG.info("Loading graph");
-        loadGraph(graphPath);
+        LOG.info("Building graph");
+        loadGraph(osmFilePath);
         cycleDisableBuilder cyDisableBuilder = new cycleDisableBuilder();
         cyDisableBuilder.setPath(new File(outPath));
         cyDisableBuilder.buildGraph(graph, extra);
