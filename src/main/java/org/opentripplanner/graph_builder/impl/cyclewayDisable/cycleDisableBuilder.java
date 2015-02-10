@@ -22,11 +22,13 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -35,6 +37,12 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.logging.Level;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
@@ -51,8 +59,41 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 /**
+ * This is builder which can find which streets have cycleway next to them
+ * 
+ * This cycleways are outputed as list of ids in geoJSON which can be used to visually inspect,
+ * another geoJSON file which can be used for debugging to see the reason why street wasn't chosen
+ * and as OSM files which can be opened in JSOM
+ * and then File/Update data (Ctrl+U) all geometry data for candidate streets is downloaded from OSM
+ * And streets can be edited and use_sidepath can be added for both or one direction.
+ * 
+ * Algorithm works quite good in Maribor for other places it probably needs some tweaking.
+ * 
+ * It has a bug if cycleways are in a circle it stack overflows because of recursion.
+ * Quick fix is to split those roads in JOSM or somewhere else.
+ * Ids will be temporary but at least one will still be the old one.
+ * 
+ * It works like that:
+ * First list of all edges is separated on cycleways 
+ * (edges which can be driven by bike but not CAR, and if it is (path, bike path
+ * or footbridge) according to OSM tags)
+ * And edges which can be driven by a CAR.
+ * 
+ * Cycleways are sorted on length from longest to shortest.
+ * For each cycleway nearest car drivable roads are searched with help of R-TREE index
+ * And if roads are near enough and parallel they are street candidates.
+ * Each cycleway that has street candidates is lengthened in forward and backward direction 
+ * until it's direction is too different, or isn't cycleway anymore.
+ * 
+ * This lengthened cycleway is expanded to polygon and all car drivable roads
+ * that are covered by this polygon are then outputted as streets that have cycleways next to them.
+ * 
+ * TODO: why do we even have street candidates?
+ * TODO: before final streets are printed out a check if roads are connected to any other found roads can be made currently it is commented out
  *
  * @author mabu
  */
@@ -119,6 +160,14 @@ public class cycleDisableBuilder implements GraphBuilder {
         }
     }
     
+    /**
+     * Compares azimuth of two streetEdges
+     * 
+     * If azimuth is negative 180 is added so that they can be compared
+     * @param cycleway
+     * @param street
+     * @return Absolute difference between always pozitive azimuth of cycleway and streetEdge
+     */
     private static double compareAzimuth(StreetEdge cycleway, StreetEdge street) {
         double cycleway_azimuth = cycleway.getAzimuth();
         double street_azimuth = street.getAzimuth();
@@ -133,6 +182,12 @@ public class cycleDisableBuilder implements GraphBuilder {
         LOG.info("Expanding {} {}", getName(cycleway.getName()), cycleway.getLabel());
     }*/
     
+    /**
+     * Returns true if current street can be traversed with bike and not a car 
+     * and if it is (path, bike path or footbridge) according to OSM tags
+     * @param current_street
+     * @return 
+     */
     private static boolean is_cycleway(StreetEdge current_street) {
         return (!current_street.canTraverse(driving) && current_street.canTraverse(cycling)
                         && (current_street.isPath()
@@ -164,7 +219,9 @@ public class cycleDisableBuilder implements GraphBuilder {
         
         Collection<Edge> allEdges = graph.getEdges();
         List<StreetEdge> streets = Lists.newArrayList(Iterables.filter(allEdges, StreetEdge.class));
+        //all the cycleways
         List<StreetEdge> cycleways = new ArrayList<StreetEdge>();
+        //All the cycleways as streetFeatures which are used for outputing to geoJSON
         List<StreetFeature> cycleways_features = new ArrayList<StreetFeature>();
         
         List<StreetEdge> candidateStreets = new ArrayList<StreetEdge>(100);
@@ -178,6 +235,7 @@ public class cycleDisableBuilder implements GraphBuilder {
         //SimpleFeatureCollection features = new DefaultFeatureCollection(null, null);
         
 
+        //Go over all street edges and skip tracks, areaEdges and reversed edges
         for(StreetEdge current_street: streets) {
             if (!current_street.isBack() &&
                     !(current_street instanceof AreaEdge) &&
@@ -208,6 +266,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                      builder.add(current_street.getGeometry());*/
 
 
+                //Car driven streets are put into Rtree index
                 } else if (current_street.canTraverse(driving)) {
                     Envelope envelope;
                     Geometry geometry = current_street.getGeometry();
@@ -227,7 +286,8 @@ public class cycleDisableBuilder implements GraphBuilder {
         
         seen_cycleway = new HashSet<Geometry>(cycleways.size());
         
-        //sort on length:
+        //sort cycleways on length so that longer cycleways are seen sooner
+        //Shorter are usually parts of cycleways in intersections
         Comparator<StreetEdge> comparator = new Comparator<StreetEdge>() {
 
             @Override
@@ -238,10 +298,6 @@ public class cycleDisableBuilder implements GraphBuilder {
         
         Collections.sort(cycleways, Collections.reverseOrder(comparator));
         
-        //removes cycleways that are at graph edge
-        //cycleways.remove(0); //removes cycleway in kamnica
-        //cycleways.remove(0); //removes cycleway in duplek
-        
         LOG.info("{} cycle streets", cycleways.size());
         LOG.info("{} main streets", this.index.size());
         
@@ -249,7 +305,9 @@ public class cycleDisableBuilder implements GraphBuilder {
         
         int number_of_processed_ways = 0;
         
+        //Here we find candidates for streets next to cycleways
         for (StreetEdge current_cycleway: cycleways) {
+            //We look at each cycleway only once
             if (seen_cycleway.contains(current_cycleway.getGeometry())) {
                 LOG.info("Skipping seen cycleway");
                 continue;
@@ -283,6 +341,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                 distanceTreshold *= 2;
                 nearbyEdges = index.query(envelope);
             }*/
+            //Search envelope for nearest street to cycleway is expanded once
             if (nearbyEdges.isEmpty()) {
                 LOG.info("Expanding envelope");
                 distanceTreshold = DISTANCE_THRESHOLD/2;
@@ -301,6 +360,9 @@ public class cycleDisableBuilder implements GraphBuilder {
                 polygonFeature.addPropertie("found", hasCandidateEdges);
                 cycleways_features.add(polygonFeature); */
             //}
+            //For each street which is near cycleway distance and direction
+            //to cycleway are checked
+            //If azimuts are similar and near enough street is considered for further processing
             for (StreetEdge nearStreet: nearbyEdges) {
                 
                 StreetFeature feature1 = StreetFeature.createRoadFeature(getName(nearStreet.getName()),
@@ -317,6 +379,8 @@ public class cycleDisableBuilder implements GraphBuilder {
                 feature1.addPropertie("distanceFrom", distance);
                 
                 boolean roadCandidate = true;
+                //Road needs to be in the same direction and near cycleway enough
+                //To be a candidate for cycleway restriction
                 if (compAzimuth > 10) {
                     feature1.addPropertie("stroke", "#FF0000");
                     feature1.addPropertie("info", "to large azimuth");
@@ -353,16 +417,17 @@ public class cycleDisableBuilder implements GraphBuilder {
                 ListIterator<StreetEdge> fullCyclewayIter = fullCycleway.listIterator();
                 fullCyclewayIter.add(current_cycleway);
                 fullCyclewayIter.previous();
-                //Finds part of cycleway from current to the start
+                //Finds part of cycleway from current part to the start (incoming edges)
                 LineString full_cycleway = lengthen_cycleway(current_cycleway, street_candidates, cycleways_features, false, fullCyclewayIter);
                 //moves current iterator position to current cycleway (which should be at the end currently)
                 while(fullCyclewayIter.hasNext()) {
                     StreetEdge partCycleway = fullCyclewayIter.next();
                 //    LOG.info("PART:{}-{}", partCycleway.getFromVertex().getLabel(), partCycleway.getToVertex().getLabel());
                 }
-                //Finds part of cycleway from current to the end
+                //Finds part of cycleway from current part to the end (outgoing edges)
                 full_cycleway = lengthen_cycleway(current_cycleway, street_candidates, cycleways_features, true, fullCyclewayIter);
                 List<Coordinate> cyclewayCoordinates = new LinkedList<Coordinate>();
+                //Connects together all cycleway parts
                 for(StreetEdge partCycleway: fullCycleway) {
                     cyclewayCoordinates.addAll(Arrays.asList(partCycleway.getGeometry().getCoordinates()));
                     seen_cycleway.add(partCycleway.getGeometry());
@@ -377,6 +442,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                 full_feature.addPropertie("stroke-width", "4.0");
                 cycleways_features.add(full_feature);*/
                 
+                //expands found cycleway to polygon
                 Geometry cylceway_polygon = (Geometry)full_cycleway.buffer(0.00021);
                 
                 if(!seen_cycleway_polygons.contains(cylceway_polygon)) {
@@ -400,6 +466,8 @@ public class cycleDisableBuilder implements GraphBuilder {
             }*/
         }
         
+        //For each extended cycleway polygons
+        //We add all streets that are near enough and covered in polygon to candidateStreets
         for(Geometry cycleway_polygon: full_cycleway_polygons) {
             distanceTreshold = DISTANCE_THRESHOLD;
             Envelope envelope = cycleway_polygon.getEnvelopeInternal();
@@ -445,6 +513,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                         feature1.addPropertie("id", nearStreet.getId());
                     }*/
                     street_candidate_feat.add(feature1);
+                    //Used so each street is checked only once
                     geometry_streets.add(nearStreet.getGeometry());
 
                 } /*else if (cycleway_polygon.isWithinDistance(nearStreet.getGeometry(), 0)) {
@@ -461,7 +530,7 @@ public class cycleDisableBuilder implements GraphBuilder {
             }
         }
         
-        //check for connectivenes after every connected street is added
+        //check for connectivenes after every connected street is added (Currently used only in geoJSON)
         for(Geometry cycleway_polygon: full_cycleway_polygons) {
             distanceTreshold = DISTANCE_THRESHOLD;
             Envelope envelope = cycleway_polygon.getEnvelopeInternal();
@@ -486,6 +555,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                 }
             }
         }
+        //Outputs all street candidates ids in ids.txt geoJSON and OSM file
         if (!cycleways_features.isEmpty()) {
             FileOutputStream fileOutputStream = null;
             try {
@@ -525,6 +595,29 @@ public class cycleDisableBuilder implements GraphBuilder {
         
                 Collections.sort(candidateStreets, comparatorID);*/
                 
+                //Creates OSM file with streets which should have cycleway
+                DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+                DocumentBuilder documentBuilder = docFactory.newDocumentBuilder();
+
+                //root element
+                Document doc = documentBuilder.newDocument();
+                Element rootElement = doc.createElement("osm");
+                rootElement.setAttribute("version", "0.6");
+                rootElement.setAttribute("generator", "My Java generator");
+
+                doc.appendChild(rootElement);
+
+                Element note = doc.createElement("note");
+                note.appendChild(doc.createTextNode("This is generated from tsv file"));
+                rootElement.appendChild(note);
+
+                Element meta = doc.createElement("meta");
+                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mmZ");
+
+                meta.setAttribute("osm_base", df.format(new Date()));
+                rootElement.appendChild(meta);
+                
+                
                 Set<String> addedIds = new HashSet<String>();
                 for(StreetEdge cand_street_edge: candidateStreets) {
                     if (!addedIds.contains(getLabel(cand_street_edge.getName()))) {
@@ -532,13 +625,26 @@ public class cycleDisableBuilder implements GraphBuilder {
                             continue;
                         }*/
                         String wayID = getLabel(cand_street_edge.getName()).split(":")[2];
-                        if (addedIds.size() == 0) {
+                        //First way is always added
+                        if (addedIds.isEmpty()) {
                             pw.print(wayID);
+
+                            Element way = doc.createElement("way");
+                            way.setAttribute("visible", "true");
+                            way.setAttribute("version", "1");
+                            way.setAttribute("id", wayID);
+                            rootElement.appendChild(way);
                         } else {
+                            //Prints 25 way ids in each line
                             if ((addedIds.size() == 1) || ((addedIds.size()-1)%25!=0)) {
                                 pw.print(",");
                             }
                             pw.print(wayID);
+                            Element way = doc.createElement("way");
+                            way.setAttribute("visible", "true");
+                            way.setAttribute("version", "1");
+                            way.setAttribute("id", wayID);
+                            rootElement.appendChild(way);
                             if (addedIds.size()%25==0) {
                                 pw.println();
                             }
@@ -547,6 +653,12 @@ public class cycleDisableBuilder implements GraphBuilder {
                         addedIds.add(getLabel(cand_street_edge.getName()));
                     }
                 }
+                TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                Transformer transformer = transformerFactory.newTransformer();
+                DOMSource source = new DOMSource(doc);
+                StreamResult result = new StreamResult(new File(_path, "candidate_streets.osm"));
+        
+                transformer.transform(source, result);
                 pw.close();
                 jsonGen1.close();
             } catch (FileNotFoundException ex) {
@@ -583,6 +695,15 @@ public class cycleDisableBuilder implements GraphBuilder {
         return;
     }
 
+    /**
+     * Recorsively walks cycleway until it the direction is much different as before or it stops being cycleway
+     * @param current_street Start of recursion
+     * @param street_candidates Seems to be unused
+     * @param cycleways_features List of GeoJSON data used for visual debugging
+     * @param forward true - search is forward, false - search is backward
+     * @param iter - cycleway parts are added to this iterator
+     * @return 
+     */
     private LineString lengthen_cycleway(StreetEdge current_street,
             List<StreetEdge> street_candidates,
             List<StreetFeature> cycleways_features,
@@ -605,7 +726,14 @@ public class cycleDisableBuilder implements GraphBuilder {
                 return o1.second.compareTo(o2.second);
             }
         };
+        //Cycleway and score how good is the continuation of cycleway
+        //Scores are:
+        //100 - same name
+        //80  - azimuth difference <= 10 and is still cycleway
+        //60  - angle of street continuation (current street outangle vs. street inAngle) <= 10 and is still cycleway
         List<T2<StreetEdge, Integer>> candidates = new ArrayList<T2<StreetEdge, Integer>>(nextEdges.size());
+        
+        //Look at all incoming/outgoing streetedges
         for (Edge edge : nextEdges) {
             if (!(edge instanceof StreetEdge)) {
                 continue;
@@ -620,6 +748,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                         candidateFeature.addPropertie("stroke-width", "2.0");
                         double compAzimuth = compareAzimuth(current_street, sedge);
                         candidateFeature.addPropertie("compAzimuth", compAzimuth);
+                        //Calculates how much angle is between this and next cycleway part
                         int diff = 0;
                         if (forward) {
                             int outAngle = current_street.getOutAngle();
@@ -635,6 +764,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                         //double distance = current_street.getGeometry().distance(sedge.getGeometry());
                         //candidateFeature.addPropertie("distanceFrom", distance);
                         
+                        //Candidate scores are assigned
                         if (getLabel(current_street.getName()).equals(getLabel(sedge.getName()))) {
                             candidates.add(new T2(sedge, 100));
                         } else if (compAzimuth <= 10  && is_cycleway(sedge)) {
@@ -643,7 +773,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                             candidates.add(new T2(sedge, 60));
                         }
                         
-                        
+                        //creating usefull geoJSON for debugging (So that can be seen why some streets weren't found)
                         if (getLabel(current_street.getName()).equals(getLabel(sedge.getName())) 
                                 || (compAzimuth <= 10  && is_cycleway(sedge))) {
                             //LOG.info("Added edge:{}, {}", getLabel(sedge.getName()), sedge.getDistance());
@@ -675,6 +805,7 @@ public class cycleDisableBuilder implements GraphBuilder {
                 }
         //Collections.sort(candidates, t2_comp);
         try {
+            //We get max score
             T2<StreetEdge, Integer> bestCandidate = Collections.max(candidates, t2_comp);
             StreetEdge sedge = bestCandidate.first;
             LOG.info("Best ca : {} {} {} ({}) {}", getLabel(sedge.getName()), sedge.getDistance(), compareAzimuth(current_street, sedge), bestCandidate.second, candidates.size());
@@ -690,6 +821,15 @@ public class cycleDisableBuilder implements GraphBuilder {
         return null;
     }
 
+    /**
+     * Checks if cand_street_edge is connected to any other found road
+     * 
+     * Sometimes roads are found which aren't connected to other parts of road network..
+     * This is usually not the correct street which has cycleway next to it.
+     * @param cand_street_edge Street that is checked
+     * @param geometry_streets geometries of all street candidates
+     * @return 
+     */
     private boolean is_connected(StreetEdge cand_street_edge, Set<Geometry> geometry_streets) {
         List<Edge> outEdges = cand_street_edge.getToVertex().getOutgoingStreetEdges();
         //checks if this road is connected to any other found road
@@ -703,6 +843,7 @@ public class cycleDisableBuilder implements GraphBuilder {
             }
         }
         
+        //Same with incoming roads
         Collection<Edge> inEdges = cand_street_edge.getFromVertex().getIncoming();
         for(Edge inEdge: inEdges) {
             if (inEdge.isReverseOf(cand_street_edge) || (!(inEdge instanceof StreetEdge))) {
