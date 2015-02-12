@@ -18,7 +18,7 @@ otp.modules.planner.defaultQueryParams = {
     startPlace                      : null,
     endPlace                        : null,
     time                            : moment().format(otp.config.locale.time.time_format),
-    date                            : moment().format("YYYY-MM-DD"),
+    date                            : moment().format(otp.config.locale.time.date_format),
     arriveBy                        : false,
     wheelchair                      : false,
     mode                            : "TRANSIT,WALK",
@@ -331,7 +331,7 @@ otp.modules.planner.PlannerModule =
                 toPlace: this.getEndOTPString(),
                 time : (this.time) ? otp.util.Time.correctAmPmTimeString(this.time) : moment().format("h:mma"),
                 //time : (this.time) ? moment(this.time).add("s", addToStart).format("h:mma") : moment().add("s", addToStart).format("h:mma"),
-                date : (this.date) ? this.date : moment().format("YYYY-MM-DD"),
+                date : (this.date) ? moment(this.date, otp.config.locale.time.date_format).format("YYYY-MM-DD") :moment().format("YYYY-MM-DD"),
                 mode: this.mode,
                 maxWalkDistance: this.maxWalkDistance
             };
