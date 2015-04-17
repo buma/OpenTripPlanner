@@ -75,7 +75,7 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
     private Multiset<Integer> counts;
 
-    private Statistics statsMinDistance;
+    private DistanceStatistics statsMinDistance;
 
     private StreetMatcher streetMatcher;
 
@@ -83,9 +83,6 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
     private NetworkLinkerLibrary networkLinkerLibrary;
 
-    int numStopsMinDistanceBigger1;
-
-    int numStopsMinDIstanceBigger20;
 
     private static final double ANGLE_DIFF = Math.PI / 18; // 10 degrees
 
@@ -334,18 +331,11 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                     closestEdges
                         .add(new EdgePoint(edges.get(0), GTFSShape.first, GTFSShape.second));
                 }
-                statsMinDistance.add(minDistance);
             } else {
                 LOG.warn("STOP: {} found edge is too far: {}", transitStop.getLabel(), minDistance);
             }
+            statsMinDistance.add(minDistance);
 
-            //This is for debugging
-            if (minDistance > 1) {
-                numStopsMinDistanceBigger1++;
-                if (minDistance > 20) {
-                    numStopsMinDIstanceBigger20++;
-                }
-            }
 
             String distance = Double.toString(
                 minDistance), max_distance = "0.0", trimm_distance = "0.0", nearness_distance = "0.0";
@@ -438,12 +428,10 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
         writerPoint = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode", "geo"),
             "geo", "outMatcher/MBpattern_wpoint.csv", false);
         counts = HashMultiset.create(10);
-        statsMinDistance = new Statistics();
+        statsMinDistance = new DistanceStatistics(true);
         streetMatcher = new StreetMatcher(graph, (STRtree) index);
         numOfStopsEdgesNotMatchedToShapes = 0;
         int nUnlinked = 0;
-        numStopsMinDistanceBigger1 = 0;
-        numStopsMinDIstanceBigger20 = 0;
         //first we need to figure out on which streets PT is driving
         //for each TransitStop we found street on which PT is driving
         for (TransitStop transitStop : Iterables.filter(vertices, TransitStop.class)) {
@@ -551,8 +539,6 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
         System.out.println(statsMinDistance.toString());
         System.out
             .println("numOfStopsEdgesNotMatchedToShapes: " + numOfStopsEdgesNotMatchedToShapes);
-        LOG.info("minDistance > 1 : {}, > 20: {}", numStopsMinDistanceBigger1,
-            numStopsMinDIstanceBigger20);
 
 
         //remove replaced edges
@@ -584,5 +570,46 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
     @Override public void checkInputs() {
         //no inputs
+    }
+
+    /**
+     * Class that in addition to statistics counts how many
+     * bigger then 1 and bigger then 20 distances are in
+     */
+    private class DistanceStatistics extends Statistics {
+        private int bigger1;
+        private int bigger20;
+        private boolean ignoreBigger20;
+
+        /**
+         *
+         * @param ignoreBigger20 if true distances larger then 20 are ignored
+         */
+        public DistanceStatistics(boolean ignoreBigger20) {
+            super();
+            this.bigger1 = 0;
+            this.bigger20 = 0;
+            this.ignoreBigger20 = ignoreBigger20;
+        }
+
+        @Override public void add(double sample) {
+            if (this.ignoreBigger20 && sample >= 20) {
+                return;
+            }
+            if (sample >= 1) {
+                this.bigger1++;
+                if (sample >= 20) {
+                    this.bigger20++;
+                }
+            }
+            super.add(sample);
+        }
+
+        @Override public String toString(Locale locale, boolean tabulations) {
+            String text = super.toString(locale, tabulations);
+
+            text += "minDistance > 1 : " + bigger1 + ", > 20 : " + bigger20 + "\n";
+            return text;
+        }
     }
 }
