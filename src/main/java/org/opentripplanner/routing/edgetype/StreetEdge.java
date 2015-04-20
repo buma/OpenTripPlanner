@@ -715,6 +715,9 @@ public class StreetEdge extends Edge implements Cloneable, EdgeInfo {
 
     @Override
     public Integer getLevel() {
+        if (!hasLevel) {
+            return 0;
+        }
         return floorNumber;
     }
 
