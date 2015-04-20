@@ -340,4 +340,11 @@ public class OSMWithTags {
             return TraverseMode.LEG_SWITCH;
         }
     }
+
+    /**
+     * @return True if this way has a sidewalk (both|left|right) since direction in walking doesn't matter
+     */
+    public boolean hasSidewalk() {
+        return isTag("sidewalk", "both") || isTag("sidewalk", "left") || isTag("sidewalk", "right");
+    }
 }

@@ -197,4 +197,85 @@ public class OSMWayTest {
         assertTrue(permissionPair.first.allows(StreetTraversalPermission.CAR));
         assertFalse(permissionPair.second.allows(StreetTraversalPermission.CAR));
     }
+
+    @Test
+    public void testNoSidewalk() {
+        OSMWay way = new OSMWay();
+        way.addTag("highway", "primary_link");
+        way.addTag("foot", "no");
+        way.addTag("oneway", "yes");
+
+        P2<StreetTraversalPermission> permissionPair = getWayProperties(way);
+
+        assertTrue(permissionPair.first.allows(StreetTraversalPermission.CAR));
+        assertFalse(permissionPair.first.allows(StreetTraversalPermission.PEDESTRIAN));
+
+        assertFalse(permissionPair.second.allows(StreetTraversalPermission.CAR));
+        assertFalse(permissionPair.second.allows(StreetTraversalPermission.PEDESTRIAN));
+        way.addTag("sidewalk", "none");
+
+        P2<StreetTraversalPermission> permissionPair1 = getWayProperties(way);
+
+        assertTrue(permissionPair1.first.allows(StreetTraversalPermission.CAR));
+        assertFalse(permissionPair1.first.allows(StreetTraversalPermission.PEDESTRIAN));
+
+        assertFalse(permissionPair1.second.allows(StreetTraversalPermission.CAR));
+        assertFalse(permissionPair1.second.allows(StreetTraversalPermission.PEDESTRIAN));
+
+        way.addTag("sidewalk", "no");
+
+        P2<StreetTraversalPermission> permissionPair2 = getWayProperties(way);
+
+        assertTrue(permissionPair2.first.allows(StreetTraversalPermission.CAR));
+        assertFalse(permissionPair2.first.allows(StreetTraversalPermission.PEDESTRIAN));
+
+        assertFalse(permissionPair2.second.allows(StreetTraversalPermission.CAR));
+        assertFalse(permissionPair2.second.allows(StreetTraversalPermission.PEDESTRIAN));
+
+    }
+
+    @Test
+    public void testBothSidewalk() {
+        OSMWay way = new OSMWay();
+        way.addTag("highway", "primary_link");
+        way.addTag("foot", "no");
+        way.addTag("oneway", "yes");
+
+        way.addTag("sidewalk", "both");
+
+        P2<StreetTraversalPermission> permissionPair2 = getWayProperties(way);
+
+        assertTrue(permissionPair2.first.allows(StreetTraversalPermission.CAR));
+        assertTrue(permissionPair2.first.allows(StreetTraversalPermission.PEDESTRIAN));
+
+        assertFalse(permissionPair2.second.allows(StreetTraversalPermission.CAR));
+        assertTrue(permissionPair2.second.allows(StreetTraversalPermission.PEDESTRIAN));
+    }
+
+    @Test
+    public void testLeftRightSidewalk() {
+        OSMWay way = new OSMWay();
+        way.addTag("highway", "primary_link");
+        way.addTag("foot", "no");
+
+        way.addTag("sidewalk", "left");
+
+        P2<StreetTraversalPermission> permissionPair2 = getWayProperties(way);
+
+        assertTrue(permissionPair2.first.allows(StreetTraversalPermission.CAR));
+        assertTrue(permissionPair2.first.allows(StreetTraversalPermission.PEDESTRIAN));
+
+        assertTrue(permissionPair2.second.allows(StreetTraversalPermission.CAR));
+        assertTrue(permissionPair2.second.allows(StreetTraversalPermission.PEDESTRIAN));
+
+        way.addTag("sidewalk", "right");
+
+        P2<StreetTraversalPermission> permissionPair3 = getWayProperties(way);
+
+        assertTrue(permissionPair3.first.allows(StreetTraversalPermission.CAR));
+        assertTrue(permissionPair3.first.allows(StreetTraversalPermission.PEDESTRIAN));
+
+        assertTrue(permissionPair3.second.allows(StreetTraversalPermission.CAR));
+        assertTrue(permissionPair3.second.allows(StreetTraversalPermission.PEDESTRIAN));
+    }
 }

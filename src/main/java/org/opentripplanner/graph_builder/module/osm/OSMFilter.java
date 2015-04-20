@@ -147,6 +147,8 @@ public class OSMFilter {
         /*
          * pedestrian rules: everything is two-way (assuming pedestrians are allowed at all) bicycle
          * rules: default: permissions;
+         *
+         * if road has a sidewalk in any direction (both|left|right) pedestrian permissions are added
          * 
          * cycleway=dismount means walk your bike -- the engine will automatically try walking bikes
          * any time it is forbidden to ride them, so the only thing to do here is to remove bike
@@ -167,6 +169,10 @@ public class OSMFilter {
             permissions = permissions.add(StreetTraversalPermission.PEDESTRIAN);
         } else if (way.isPedestrianExplicitlyDenied()) {
             permissions = permissions.remove(StreetTraversalPermission.PEDESTRIAN);
+        }
+
+        if (way.hasSidewalk()) {
+            permissions = permissions.add(StreetTraversalPermission.PEDESTRIAN);
         }
 
         // Compute bike permissions, check consistency.
