@@ -18,4 +18,6 @@ public interface EdgeInfo {
     public TraverseMode getPublicTransitType();
 
     public long getOsmID();
+
+    public boolean hasSidewalk();
 }

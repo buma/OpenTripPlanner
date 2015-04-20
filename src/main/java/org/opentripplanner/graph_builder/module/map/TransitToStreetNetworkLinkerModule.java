@@ -21,6 +21,8 @@ import com.vividsolutions.jts.geom.*;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.index.SpatialIndex;
 import com.vividsolutions.jts.index.strtree.STRtree;
+import com.vividsolutions.jts.linearref.LinearLocation;
+import com.vividsolutions.jts.linearref.LocationIndexedLine;
 import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TLongHashSet;
 import org.apache.commons.math3.util.FastMath;
@@ -33,6 +35,7 @@ import org.opentripplanner.common.model.T2;
 import org.opentripplanner.graph_builder.annotation.StopUnlinked;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.*;
 import org.opentripplanner.routing.edgetype.loader.LinkRequest;
 import org.opentripplanner.routing.edgetype.loader.NetworkLinkerLibrary;
@@ -73,9 +76,17 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
     private GeometryCSVWriter writerPoint;
 
+    private GeometryCSVWriter writerPoly;
+
+    private GeometryCSVWriter writerParalelRoads;
+
+    private GeometryCSVWriter writerPointSV;
+
     private Multiset<Integer> counts;
 
     private DistanceStatistics statsMinDistance;
+
+    private DistanceStatistics statsMinDistance1;
 
     private StreetMatcher streetMatcher;
 
@@ -83,6 +94,11 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
     private NetworkLinkerLibrary networkLinkerLibrary;
 
+    private static final TraverseModeSet cycling = new TraverseModeSet(TraverseMode.BICYCLE);
+
+    private static final TraverseModeSet walking = new TraverseModeSet(TraverseMode.WALK);
+
+    private static final TraverseModeSet driving = new TraverseModeSet(TraverseMode.CAR);
 
     private static final double ANGLE_DIFF = Math.PI / 18; // 10 degrees
 
@@ -326,15 +342,16 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                 //Some edge which is even closer then previous was found
                 if (cur_edge != null) {
 
-                    closestEdges.add(new EdgePoint(cur_edge, GTFSShape.first, GTFSShape.second));
+                    closestEdges.add(new EdgePoint(cur_edge, GTFSShape.first, GTFSShape.second, minDistance));
                 } else {
                     closestEdges
-                        .add(new EdgePoint(edges.get(0), GTFSShape.first, GTFSShape.second));
+                        .add(new EdgePoint(edges.get(0), GTFSShape.first, GTFSShape.second, minDistance));
                 }
+
             } else {
                 LOG.warn("STOP: {} found edge is too far: {}", transitStop.getLabel(), minDistance);
             }
-            statsMinDistance.add(minDistance);
+            statsMinDistance1.add(minDistance);
 
 
             String distance = Double.toString(
@@ -426,9 +443,17 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
             "outMatcher/pattern_point.csv", false);
         //writerAzimuth = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", ))
         writerPoint = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode", "geo"),
-            "geo", "outMatcher/MBpattern_wpoint.csv", false);
+            "geo", "outMatcher/MBpattern_wpoint.csv");
+        writerPoly = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode", "type", "geo"),
+            "geo", "outMatcher/MBpatterns_street_poly.csv");
+        writerParalelRoads = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode",
+            "permissions", "is_parallel", "same_level", "azimuth", "idx_edge", "edge_id", "geo"), "geo",
+            "outMatcher/MBpatterns_parallel.csv");
+        writerPointSV = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode",
+        "is_sidwewalk", "geo"), "geo", "outMatcher/MBStreet_v_P.csv");
         counts = HashMultiset.create(10);
         statsMinDistance = new DistanceStatistics(true);
+        statsMinDistance1 = new DistanceStatistics(true);
         streetMatcher = new StreetMatcher(graph, (STRtree) index);
         numOfStopsEdgesNotMatchedToShapes = 0;
         int nUnlinked = 0;
@@ -460,11 +485,112 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
             int edge_index = 0;
             for (EdgePoint edgePoint : edges) {
-                //writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(), transitStop.getModes().toString()), edgePoint.getClosestPoint());
-                StreetEdge se;
-                if (edgePoint.getEdge() instanceof StreetEdge) {
-                    se = (StreetEdge) edgePoint.getEdge();
+                StreetEdge se = null;
+                double minDistance = edgePoint.getMinDistance();
+                Coordinate coordinate = edgePoint.getClosestPoint();
+                StreetEdge foundClosestSidewalk = null;
+
+                //Current connected street doesn't have a sidewalk
+                //We are searching for a parallel street which is a sidewalk
+                if (!edgePoint.getEdgeInfo().hasSidewalk()) {
+
+                    //writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(), transitStop.getModes().toString()), edgePoint.getClosestPoint());
+                    Geometry streetGeo = edgePoint.getEdge().getGeometry().getEnvelope();
+                    writerPoly.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                        transitStop.getModes().toString(), "envelope"), streetGeo);
+                    Geometry streetPolygon = (Geometry) edgePoint.getEdge().getGeometry()
+                        .buffer(0.00021);
+                    writerPoly.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                        transitStop.getModes().toString(), "polygon"), streetPolygon);
+                    //List<Edge> closestEdges = this.index.query(edgePoint.getEdge().getGeometry().getEnvelopeInternal());
+                    List<Edge> closestEdges = this.index.query(streetPolygon.getEnvelopeInternal());
+                    Integer foundEdgeIdx = 0;
+                    double minDistanceSidewalk = Double.MAX_VALUE;
+
+                    if (edgePoint.getEdge() instanceof StreetEdge) {
+                        //TODO: maybe distance to point on current best edge would be better
+                        minDistanceSidewalk = SphericalDistanceLibrary
+                            .fastDistance(transitStop.getCoordinate(), edgePoint.getClosestPoint());
+                        //LOG.info("actualMinDistance: {}", minDistanceSidewalk);
+                    }
+                    LOG.info("Stop: {} conn to {} ({}) no SW cur min distance: {}",
+                        transitStop.getLabel(), edgePoint.getEdge().getName(), edgePoint.getEdgeInfo().getOsmID(),
+                         minDistanceSidewalk);
+
+
+                    for (StreetEdge closestStreetEdge : Iterables
+                        .filter(closestEdges, StreetEdge.class)) {
+                        LineString closestStreetEdgeGeo = closestStreetEdge.getGeometry();
+                        //street geometry is looked only in the part where it is closest to closestStreetEdge
+                        //closestStreetEdgeGeo = MaximalNearestSubline.getMaximalNearestSubline(closestStreetEdgeGeo, edgePoint.getEdge().getGeometry());
+                        if (!streetPolygon.covers(closestStreetEdgeGeo)) {
+                            continue;
+                        }
+
+                        String is_parallel = "0";
+                        String same_level = "0";
+                        if (closestStreetEdge.getLevel().equals(edgePoint.getLevel())) {
+                            same_level = "1";
+                        }
+                        double azimuthClosestStreetEdge = DirectionUtils
+                            .getAzimuthRad(closestStreetEdgeGeo);
+                        //TODO: check for level, angle it should be around 90 between transitStop projection and edge
+                        //And connection can't intersect with any edge
+                        if (parallel(DirectionUtils.getAzimuthRad(edgePoint.getEdge().getGeometry()),
+                            azimuthClosestStreetEdge)) {
+                            is_parallel = "1";
+                            //we search for street that can be walked on (sidewalk usually)
+                            if (closestStreetEdge.canTraverse(walking) &&
+                                !closestStreetEdge.canTraverse(driving) &&
+                                same_level.equals("1")) {
+                                double curMinDistance = SphericalDistanceLibrary
+                                    .fastDistance(transitStop.getCoordinate(),
+                                        closestStreetEdge.getGeometry());
+                                if (curMinDistance < minDistanceSidewalk) {
+                                    minDistanceSidewalk = curMinDistance;
+                                    foundClosestSidewalk = closestStreetEdge;
+                                    LOG.info("  CLOSE street par, level, walked: {} {} ({}) {}", curMinDistance, closestStreetEdge.getName(), closestStreetEdge.getOsmID(), closestStreetEdge.getPermission());
+                                } else {
+                                    LOG.info("   far street par, level, walked: {} {} ({}) {}", curMinDistance, closestStreetEdge.getName(), closestStreetEdge.getOsmID(), closestStreetEdge.getPermission());
+                                }
+                            }
+                        }
+                        writerParalelRoads.add(Arrays
+                            .asList(transitStop.getLabel(), transitStop.getName(),
+                                transitStop.getModes().toString(),
+                                closestStreetEdge.getPermission().toString(), is_parallel,
+                                same_level,
+                                Double.toString(FastMath.toDegrees(azimuthClosestStreetEdge)),
+                                foundEdgeIdx.toString(), Long.toString(closestStreetEdge.getOsmID())), closestStreetEdge.getGeometry());
+                        foundEdgeIdx++;
+                    }
+
+                    if (edgePoint.getEdge() instanceof StreetEdge) {
+                        se = (StreetEdge) edgePoint.getEdge();
+                    }
+
+
+                    //if sidewalk was found we connect to the projected point on sidewalk
+                    if (foundClosestSidewalk != null) {
+                        LOG.info("  Found closer street for {} : {} ({}) {}", transitStop.getLabel(),
+                            foundClosestSidewalk.getName(), foundClosestSidewalk.getOsmID(), foundClosestSidewalk.getPermission());
+                        LocationIndexedLine indexedSidewalk = new LocationIndexedLine(
+                            foundClosestSidewalk.getGeometry());
+                        LinearLocation stopLocation = indexedSidewalk
+                            .project(transitStop.getCoordinate());
+
+                        coordinate = stopLocation.getCoordinate(foundClosestSidewalk.getGeometry());
+                        minDistance = minDistanceSidewalk;
+                        se = foundClosestSidewalk;
+                    }
                 } else {
+                    if (edgePoint.getEdge() instanceof StreetEdge) {
+                        se = (StreetEdge) edgePoint.getEdge();
+                        LOG.info("Stop: {} connected to road with sidewalk", transitStop);
+                    }
+                }
+
+                if (se == null) {
                     LOG.info("Skipping transitMode {} in stop: {}", edgePoint.getTraverseMode(),
                         transitStop);
                     continue;
@@ -475,7 +601,9 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                 String vertexLabel;
                 vertexLabel = "link for " + transitStop.getStopId();
 
-                Coordinate coordinate = edgePoint.getClosestPoint();
+                statsMinDistance.add(minDistance);
+
+
                 /*LocationIndexedLine indexedEdge = new LocationIndexedLine(edgePoint.getEdge().getGeometry());
                 LinearLocation stopLocation = indexedEdge.project(transitStop.getCoordinate());
 
@@ -512,6 +640,12 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                     for (StreetVertex sv : nearbyStreetVertices) {
                         new StreetTransitLink(sv, transitStop, wheelchairAccessible);
                         new StreetTransitLink(transitStop, sv, wheelchairAccessible);
+                        String isSidewalk = "0";
+                        if (foundClosestSidewalk != null) {
+                            isSidewalk = "1";
+                        }
+                        writerPointSV.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                            transitStop.getModes().toString(), isSidewalk), sv.getCoordinate());
                     }
                 } else {
                     LOG.info(graph.addBuilderAnnotation(new StopUnlinked(transitStop)));
@@ -532,11 +666,16 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
         writerTransitStop.close();
         writerMatchedStreets.close();
         writerPoint.close();
+        writerPoly.close();
+        writerParalelRoads.close();
+        writerPointSV.close();
         for (Multiset.Entry<Integer> stop : counts.entrySet()) {
             System.out.println(stop.getElement() + ": " + stop.getCount());
         }
         System.out.println("Distance between shapes & found edges:");
         System.out.println(statsMinDistance.toString());
+        System.out.println("distance in getTransit:");
+        System.out.println(statsMinDistance1.toString());
         System.out
             .println("numOfStopsEdgesNotMatchedToShapes: " + numOfStopsEdgesNotMatchedToShapes);
 

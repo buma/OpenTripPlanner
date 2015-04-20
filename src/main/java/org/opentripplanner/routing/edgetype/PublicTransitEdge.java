@@ -145,6 +145,10 @@ public class PublicTransitEdge extends Edge implements EdgeInfo {
         return osmID;
     }
 
+    @Override public boolean hasSidewalk() {
+        return false;
+    }
+
     public void setOsmID(long osmID) {
         this.osmID = osmID;
     }

@@ -3,6 +3,7 @@ package org.opentripplanner.graph_builder.module.map;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.edgetype.EdgeInfo;
 import org.opentripplanner.routing.graph.Edge;
 
 /**
@@ -12,11 +13,14 @@ public class EdgePoint {
     private Edge edge;
     private Coordinate closestPoint;
     private TraverseMode traverseMode;
+    private double minDistance;
 
-    public EdgePoint(Edge closestEdge, LineString GTFSShape, TraverseMode traverseMode) {
+    public EdgePoint(Edge closestEdge, LineString GTFSShape, TraverseMode traverseMode,
+        double minDistance) {
         this.edge = closestEdge;
         this.closestPoint = GTFSShape.getCoordinateN(0);
         this.traverseMode = traverseMode;
+        this.minDistance = minDistance;
     }
 
     public Edge getEdge() {
@@ -29,5 +33,17 @@ public class EdgePoint {
 
     public TraverseMode getTraverseMode() {
         return traverseMode;
+    }
+
+    public double getMinDistance() {
+        return minDistance;
+    }
+
+    public Integer getLevel() {
+        return ((EdgeInfo)edge).getLevel();
+    }
+
+    public EdgeInfo getEdgeInfo() {
+        return (EdgeInfo) edge;
     }
 }
