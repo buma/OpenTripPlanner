@@ -124,7 +124,10 @@ public class StreetMatcher {
             
             double error = MatchState.distance(initialLocation.getCoordinate(edgeGeometry), routeStartCoordinate);
             MidblockMatchState state = new MidblockMatchState(null, routeGeometry, initialEdge, startIndex, initialLocation, error, 0.01);
-            states.insert(state, 0); //make sure all initial states are visited by inserting them at 0
+            //If this inserts 0 there are 12 stops where worst road is chosen
+            //For example if states are inserted in this order: bad road, bad road, nearest road:
+            // bad road will be lengthened even though nearest has much lover error 0.02 compared to 14
+            states.insert(state, error); //make sure all initial states are visited by inserting them at 0
         }
 
         // search for best-matching path
