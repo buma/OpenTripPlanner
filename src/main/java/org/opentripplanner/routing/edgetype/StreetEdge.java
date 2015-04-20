@@ -78,6 +78,7 @@ public class StreetEdge extends Edge implements Cloneable, EdgeInfo {
     private static final int STAIRS_FLAG_INDEX = 4;
     private static final int SLOPEOVERRIDE_FLAG_INDEX = 5;
     private static final int WHEELCHAIR_ACCESSIBLE_FLAG_INDEX = 6;
+    private static final int HAS_SIDEWALK = 7;
 
     private long osmID;
 
@@ -600,6 +601,14 @@ public class StreetEdge extends Edge implements Cloneable, EdgeInfo {
 	public void setWheelchairAccessible(boolean wheelchairAccessible) {
         flags = BitSetUtils.set(flags, WHEELCHAIR_ACCESSIBLE_FLAG_INDEX, wheelchairAccessible);
 	}
+
+    public boolean hasSidewalk() {
+        return BitSetUtils.get(flags, HAS_SIDEWALK);
+    }
+
+    public void setHasSidewalk(boolean hasSidewalk) {
+        flags = BitSetUtils.set(flags, HAS_SIDEWALK, hasSidewalk);
+    }
 
 	public StreetTraversalPermission getPermission() {
 		return permission;

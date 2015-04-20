@@ -1053,6 +1053,8 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
             street.setOsmID(way.getId());
 
+            street.setHasSidewalk(way.hasSidewalk());
+
             String highway = way.getTag("highway");
             int cls;
             if ("crossing".equals(highway) && !way.isTag("bicycle", "designated")) {
