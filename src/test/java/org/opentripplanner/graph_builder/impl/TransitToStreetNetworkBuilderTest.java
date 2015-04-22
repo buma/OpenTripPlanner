@@ -276,6 +276,10 @@ public class TransitToStreetNetworkBuilderTest {
         int unknownStops = 0;
         //Stops which are linked to the same street as in correct connection
         int correctlyLinkedStops = 0;
+        //counts actual stops
+        int correctlyLinkedActualStops = 0;
+        //Makes sure that each testing stop is only checked once
+        Set<TransitStop> seenStop = new HashSet<>(stop_id_toEdge.size());
         //For each transit stop in current graph check if transitStop is correctly connected
         for(TransitStop ts: Iterables.filter(gg.getVertices(), TransitStop.class)) {
 	    //Used for checking if this stop has any connection
@@ -337,6 +341,10 @@ public class TransitToStreetNetworkBuilderTest {
                         }
                     }  else {
                         pw.println(ts.getLabel() + " CONNECTED");
+                        if (!seenStop.contains(ts)) {
+                            correctlyLinkedActualStops++;
+                            seenStop.add(ts);
+                        }
                     }
                 }
             }
@@ -351,11 +359,16 @@ public class TransitToStreetNetworkBuilderTest {
         }
         
         LOG.info("Correctly linked {}/{} ({}%) stations for {}", correctlyLinkedStops, allStops-unknownStops, Math.round((double)correctlyLinkedStops/(double)(allStops-unknownStops)*100), osm_filename);
+        LOG.info("Correctly linked actual stops {}/{} ({}%) stations for {}",
+            correctlyLinkedActualStops, stop_id_toEdge.size(),
+            Math.round((double) correctlyLinkedActualStops / (double) stop_id_toEdge.size() * 100),
+            osm_filename);
         LOG.info("Not checked: {} stations.", unknownStops);
 
         try {
             PrintWriter pw_readme = new PrintWriter(new FileWriter("diffs/readme.txt", true));
             pw_readme.println(String.format("Correctly linked %d/%d (%d%%) stations for %s", correctlyLinkedStops, allStops-unknownStops, Math.round((double)correctlyLinkedStops/(double)(allStops-unknownStops)*100), osm_filename));
+            pw_readme.println(String.format("Correctly linked actual stops %d/%d (%d%%) stations for %s", correctlyLinkedActualStops, stop_id_toEdge.size(), Math.round((double)correctlyLinkedActualStops/(double)stop_id_toEdge.size()*100), osm_filename));
             pw_readme.println(String.format("Not checked: %d stations.", unknownStops));
             pw_readme.println(String.format("All stops: %d", stop_id_toEdge.size()));
             pw_readme.close();
