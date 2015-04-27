@@ -15,6 +15,7 @@ package org.opentripplanner.util;
 import com.csvreader.CsvWriter;
 import com.google.common.annotations.VisibleForTesting;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.WKTWriter;
 import java.io.IOException;
@@ -194,6 +195,21 @@ public class GeometryCSVWriter {
      */
     public void add(List<String> values, Coordinate coordinate) {
         add(values, GeometryUtils.getGeometryFactory().createPoint(coordinate));
+    }
+
+    /**
+     * Writes a line into CSV file
+     *
+     * First values up to geo field are written, then geo field then other
+     * values.
+     *
+     * @param values of csv columns in same order as in constructor with skipped
+     * geo field
+     * @param envelope Envelope data
+     * @see #add(java.util.List, com.vividsolutions.jts.geom.Geometry)
+     */
+    public void add(List<String> values, Envelope envelope) {
+        add(values, GeometryUtils.getGeometryFactory().toGeometry(envelope));
     }
 
     /**

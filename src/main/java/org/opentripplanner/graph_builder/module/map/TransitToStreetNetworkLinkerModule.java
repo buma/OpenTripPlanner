@@ -89,6 +89,8 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
     private GeometryCSVWriter writeMNS;
 
+    private GeometryCSVWriter writerFerryOSM;
+
     private Multiset<Integer> counts;
 
     private DistanceStatistics statsMinDistance;
@@ -108,6 +110,9 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
     private static final TraverseModeSet driving = new TraverseModeSet(TraverseMode.CAR);
 
     private static final double ANGLE_DIFF = Math.PI / 12; // 15 degrees
+
+    private double searchRadiusM = 250;
+    private double searchRadiusLat = SphericalDistanceLibrary.metersToDegrees(searchRadiusM);
 
     STRtree createIndex() {
         STRtree edgeIndex = new STRtree();
@@ -754,6 +759,8 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
             "distance", "score", "endwise", "geo"), "geo", "outMatcher/MBcedges.csv", shouldWrite);
         writeMNS = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode", "type", "main_edge_id", "street_edge_id",
             "geo"), "geo", "outMatcher/MB_mns.csv", shouldWrite);
+        writerFerryOSM = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "distance",
+            "is_closest", "numStreetEdges", "geo"), "geo", "outMatcher/ND_ferries.csv", true);
         counts = HashMultiset.create(10);
         statsMinDistance = new DistanceStatistics(true);
         statsMinDistance1 = new DistanceStatistics(true);
@@ -780,7 +787,53 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
             //TODO: What if it has Ferry and other stuff
             if (transitStop.getModes().contains(TraverseMode.FERRY)) {
-                //do stuff
+                LOG.info("Stop:{} ({}) searching Ferry", transitStop.getName(), transitStop.getLabel());
+                Envelope envelope = new Envelope(transitStop.getCoordinate());
+                double xscale = Math.cos(transitStop.getCoordinate().y * Math.PI / 180);
+                envelope.expandBy(searchRadiusLat / xscale, searchRadiusLat);
+                writerTransitStop.add(Arrays
+                    .asList(transitStop.getLabel(), transitStop.getName(),
+                        Integer.toString(transitStop.geometries.size()),
+                        transitStop.getModes().toString()), transitStop.getCoordinate());
+
+                writerPoly.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                    transitStop.getModes().toString(), "envelope"), envelope);
+                Collection<Vertex> envelope_vertices = networkLinkerLibrary.index.getVerticesForEnvelope(envelope);
+                Collection<StreetVertex> currentNearbyStreetVertices = new ArrayList<>(5);
+                double closestDistance = Double.MAX_VALUE;
+                TransitStopStreetVertex closestOSMFerry = null;
+                List<TransitStopStreetVertex> ferryVerticesCandidates = new ArrayList<>(envelope_vertices.size());
+                for (TransitStopStreetVertex tsv : Iterables.filter(envelope_vertices, TransitStopStreetVertex.class)) {
+                    if (tsv.mode == TraverseMode.FERRY) {
+                        ferryVerticesCandidates.add(tsv);
+                        int numOfStreetEdges = tsv.getOutgoingStreetEdges().size();
+                        double distance = SphericalDistanceLibrary.fastDistance(transitStop.getCoordinate(), tsv.getCoordinate());
+                        LOG.info("  Found candidate: {} ({}) [{}]", tsv.getName(), tsv.getLabel(), distance);
+                        if (distance < closestDistance) {
+                            closestDistance = distance;
+                            closestOSMFerry = tsv;
+                        }
+
+
+                    }
+                }
+
+                if (closestOSMFerry != null && closestOSMFerry.getOutgoingStreetEdges().size() > 0) {
+                    currentNearbyStreetVertices.add(closestOSMFerry);
+                }
+
+                for (TransitStopStreetVertex tsv: ferryVerticesCandidates) {
+                    int numOfStreetEdges = tsv.getOutgoingStreetEdges().size();
+                    double distance = SphericalDistanceLibrary.fastDistance(
+                        transitStop.getCoordinate(), tsv.getCoordinate());
+                    boolean is_closest = tsv.equals(closestOSMFerry);
+                    writerFerryOSM.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                        Double.toString(distance), Boolean.toString(is_closest), Integer.toString(numOfStreetEdges)), tsv.getCoordinate());
+                }
+
+                if (!currentNearbyStreetVertices.isEmpty()) {
+                    nearbyStreetVertices = currentNearbyStreetVertices;
+                }
             } else {
                 nearbyStreetVertices = getVertices(transitStop);
             }
@@ -813,6 +866,7 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
         writerPointSV.close();
         writerCe.close();
         writeMNS.close();
+        writerFerryOSM.close();
         for (Multiset.Entry<Integer> stop : counts.entrySet()) {
             System.out.println(stop.getElement() + ": " + stop.getCount());
         }
