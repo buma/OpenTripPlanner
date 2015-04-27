@@ -116,4 +116,16 @@ public class CandidateEdgeBundle extends ArrayList<CandidateEdge> {
         }
         return false;
     }
+
+    @Override public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (CandidateEdge ce : this) {
+            if (ce.equals(best)) {
+                stringBuilder.append("BEST:");
+            }
+            stringBuilder.append(ce.toString());
+            stringBuilder.append(",");
+        }
+        return "CandidateEdgeBundle{" + stringBuilder.toString() + "}";
+    }
 }
