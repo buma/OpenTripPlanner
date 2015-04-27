@@ -486,6 +486,8 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
             if (alreadyLinked)
                 continue;
 
+            Collection<StreetVertex> nearbyStreetVertices = null; // new ArrayList<>(5);
+
             //Here we get edges and points to where we should link according to GTFS which are closest to the path where PT drives
             //This can be roads on which bus drives or TRAM/RAIL/SUBWAY PublicTransitEdges
             List<EdgePoint> edges = getTransitEdges(transitStop);
@@ -702,7 +704,7 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
                 // if the bundle was caught endwise (T intersections and dead ends),
                 // get the intersection instead.
-                Collection<StreetVertex> nearbyStreetVertices = null; // new ArrayList<>(5);
+                Collection<StreetVertex> currentNearbyStreetVertices = null;
                 //if (edges.endwise())
                 //TODO: numOfStopsEdgesNotMatchedToShapes
                 //else
@@ -718,26 +720,22 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                 }
                 */
 
-                if (nearbyStreetVertices == null) {
+                if (currentNearbyStreetVertices == null) {
 
                     if (best != null) {
-                        nearbyStreetVertices = request
+                        currentNearbyStreetVertices = request
                             .getSplitterVertices(vertexLabel, best.toEdgeList(), transitStop.getCoordinate());
                         LOG.info(" linking with CE");
                     } else {
-                        nearbyStreetVertices = request
+                        currentNearbyStreetVertices = request
                             .getSplitterVertices(vertexLabel, Arrays.asList(se), coordinate);
                         LOG.info(" linking normal");
                     }
                     //LOG.info("Splitting edge for stop {}", transitStop);
                 }
 
-                if (nearbyStreetVertices != null) {
-                    boolean wheelchairAccessible = transitStop.hasWheelchairEntrance();
-                    //Actual linking happens
-                    for (StreetVertex sv : nearbyStreetVertices) {
-                        new StreetTransitLink(sv, transitStop, wheelchairAccessible);
-                        new StreetTransitLink(transitStop, sv, wheelchairAccessible);
+                if (currentNearbyStreetVertices != null){
+                    for (StreetVertex sv : currentNearbyStreetVertices) {
                         String isSidewalk = "0";
                         if (foundClosestSidewalk != null) {
                             isSidewalk = "1";
@@ -745,11 +743,26 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                         writerPointSV.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
                             transitStop.getModes().toString(), isSidewalk), sv.getCoordinate());
                     }
-                } else {
-                    LOG.info(graph.addBuilderAnnotation(new StopUnlinked(transitStop)));
-                    nUnlinked += 1;
+
+                    if (nearbyStreetVertices == null) {
+                        nearbyStreetVertices = currentNearbyStreetVertices;
+                    } else {
+                        nearbyStreetVertices.addAll(currentNearbyStreetVertices);
+                    }
                 }
                 edge_index++;
+            }
+
+            if (nearbyStreetVertices != null) {
+                boolean wheelchairAccessible = transitStop.hasWheelchairEntrance();
+                //Actual linking happens
+                for (StreetVertex sv : nearbyStreetVertices) {
+                    new StreetTransitLink(sv, transitStop, wheelchairAccessible);
+                    new StreetTransitLink(transitStop, sv, wheelchairAccessible);
+                }
+            } else {
+                LOG.info(graph.addBuilderAnnotation(new StopUnlinked(transitStop)));
+                nUnlinked += 1;
             }
 
         }
