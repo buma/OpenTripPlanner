@@ -246,6 +246,8 @@ public class TransitToStreetNetworkBuilderTest {
             writer = new CsvWriter("diffs/transit_stats_" + name + ".csv", ':', Charset.forName("UTF8"));
             writer.writeRecord(new String[]{"stop_modes", "distance", "street_type", "street_modes", "stop_id", "stop_name"});
         }
+        CsvWriter testStats = new CsvWriter("diffs/stats_" + name + ".csv", '|', Charset.forName("UTF8"));
+        testStats.writeRecord(new String[]{"stop_id", "stop_name", "mode", "correctly_linked", "num_transit_links", "num_correct_links"});
         //Reads saved correct transit stop -> Street edge connections
         FileInputStream fis = new FileInputStream(getClass().getResource(wanted_con_filename).getFile());
         ObjectInputStream ois = new ObjectInputStream(fis);
@@ -284,6 +286,8 @@ public class TransitToStreetNetworkBuilderTest {
         for(TransitStop ts: Iterables.filter(gg.getVertices(), TransitStop.class)) {
 	    //Used for checking if this stop has any connection
             int savedAllStops = allStops;
+            //used for checking if this stop has any correct connections
+            int savedCorrectLinks = correctlyLinkedStops;
             //Each stop usually has 2 outgoing StreetTransit links each for a different direction
             for (StreetTransitLink e : Iterables.filter(ts.getOutgoing(), StreetTransitLink.class)) {
                 allStops++;
@@ -356,6 +360,13 @@ public class TransitToStreetNetworkBuilderTest {
                     missingStops.addAll(TransitToStreetConnection.toStreetFeatureMissing(ts, wanted_con.getStreetEdge()));
                 }
             }
+            TransitStopConnToWantedEdge wanted_con = stop_id_toEdge.get(ts.getLabel());
+	    //if stop can be tested (has a correct link)
+            if (wanted_con != null) {
+		//is correctly connected, num of correct/all transit links is written to CSV file
+                StatsCsv statsCsv = new StatsCsv(ts, allStops, savedAllStops, correctlyLinkedStops, savedCorrectLinks);
+                testStats.writeRecord(statsCsv.toCsvLine());
+            }
         }
         
         LOG.info("Correctly linked {}/{} ({}%) stations for {}", correctlyLinkedStops, allStops-unknownStops, Math.round((double)correctlyLinkedStops/(double)(allStops-unknownStops)*100), osm_filename);
@@ -380,6 +391,7 @@ public class TransitToStreetNetworkBuilderTest {
         missingStops.addAll(TransitToStreetConnection.toFeatureCollection(transitConnections, TransitToStreetConnection.CollectionType.CORRECT_LINK).getFeatures());
         writeGeoJson("diffs/correct_" + name + ".geojson", new StreetFeatureCollection(missingStops));
         pw.close();
+        testStats.close();
     }
     
     /**
@@ -595,5 +607,39 @@ public class TransitToStreetNetworkBuilderTest {
         
         return new T2(max, max_index);
         
+    }
+
+    /**
+     * Class which eases creation of CSV with stop information:
+     * - Stop ID
+     * - Stop name
+     * - list of Transit modes stopping here
+     * - Does stop have at least one correct link (bool)
+     * - number of {@link StreetTransitLink}
+     * - number of correct {@link StreetTransitLink}
+     */
+    private class StatsCsv {
+        private final int num_correct_links;
+
+        private final int num_transit_links;
+
+        private final TransitStop transitStop;
+
+        private final boolean correctly_linked;
+
+        public StatsCsv(TransitStop ts, int allStops, int savedAllStops, int correctlyLinkedStops,
+            int savedCorrectLinks) {
+            this.transitStop = ts;
+            this.num_transit_links = allStops - savedAllStops;
+            this.num_correct_links = correctlyLinkedStops - savedCorrectLinks;
+            this.correctly_linked = num_correct_links > 0;
+        }
+
+        public String[] toCsvLine() {
+            String modes = transitStop.getModes().toString().replace("TraverseMode (", "").replace(")", "");
+            return new String[]{ transitStop.getLabel(), transitStop.getName(),
+                modes, Boolean.toString(correctly_linked),
+                Integer.toString(num_transit_links), Integer.toString(num_correct_links)};
+        }
     }
 }
