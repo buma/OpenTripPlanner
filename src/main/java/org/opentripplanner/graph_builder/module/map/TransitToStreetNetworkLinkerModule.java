@@ -46,6 +46,7 @@ import org.opentripplanner.routing.impl.CandidateEdge;
 import org.opentripplanner.routing.impl.CandidateEdgeBundle;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
+import org.opentripplanner.routing.vertextype.TransitStopStreetVertex;
 import org.opentripplanner.util.GeometryCSVWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -424,6 +425,295 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
         //TODO: some problems with round streets -116 shape -145 matched -172 shape all basically parallel the only problem is that there is very little overlap
     }
 
+    private Collection<StreetVertex> getVertices(TransitStop transitStop) {
+        Collection<StreetVertex> nearbyStreetVertices = null;
+        //Here we get edges and points to where we should link according to GTFS which are closest to the path where PT drives
+        //This can be roads on which bus drives or TRAM/RAIL/SUBWAY PublicTransitEdges
+        List<EdgePoint> edges = getTransitEdges(transitStop);
+
+        //statsMinDistance.add(transitStop.getLevels().size());
+
+        if (edges.isEmpty()) {
+            LOG.info(graph.addBuilderAnnotation(new StopUnlinked(transitStop)));
+            //nUnlinked += 1;
+            return nearbyStreetVertices;
+        }
+
+        //Now for each of this edges we look around to find if there are some parallel streets which can be walked on
+        //Streets which have sidewalks are skipped
+        CandidateEdgeBundle candidateEdges = new CandidateEdgeBundle();
+        int edge_index = 0;
+        for (EdgePoint edgePoint : edges) {
+            StreetEdge se = null;
+            double minDistance = edgePoint.getMinDistance();
+            Coordinate coordinate = edgePoint.getClosestPoint();
+            StreetEdge foundClosestSidewalk = null;
+
+            //Current mambo jambo to add current closest street if it is streetEdge and reverse Edge
+            //TODO: check if street can actually be walked on. Better reverse detection
+            if (edgePoint.getEdge() instanceof StreetEdge) {
+                candidateEdges.add(
+                    new CandidateEdge((StreetEdge) edgePoint.getEdge(), transitStop.getCoordinate(),
+                        1.0, transitStop.getModes()));
+                for (Edge anEdge : edgePoint.getEdge().getToVertex().getOutgoing()) {
+                    if (anEdge.isReverseOf(edgePoint.getEdge())) {
+                        candidateEdges.add(
+                            new CandidateEdge((StreetEdge) anEdge, transitStop.getCoordinate(), 1.0,
+                                transitStop.getModes()));
+                        break;
+                    }
+                }
+            }
+
+            boolean hasSw = edgePoint.getEdgeInfo().hasSidewalk();
+                /*if (transitStop.getLabel().endsWith(":689")) {
+                    hasSw = false;
+                }*/
+            //Current connected street doesn't have a sidewalk
+            //We are searching for a parallel street which is a sidewalk
+            //Parallel street needs to be inside current street polygon be on same level and must be walkable but not drivable
+            if (!hasSw) {
+
+                //writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(), transitStop.getModes().toString()), edgePoint.getClosestPoint());
+                Geometry streetGeo = edgePoint.getEdge().getGeometry().getEnvelope();
+                writerPoly.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                    transitStop.getModes().toString(), "envelope"), streetGeo);
+                Geometry streetPolygon = (Geometry) edgePoint.getEdge().getGeometry()
+                    .buffer(0.00021);
+                writerPoly.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                    transitStop.getModes().toString(), "polygon"), streetPolygon);
+                //List<Edge> closestEdges = this.index.query(edgePoint.getEdge().getGeometry().getEnvelopeInternal());
+                List<Edge> closestEdges = this.index.query(streetPolygon.getEnvelopeInternal());
+                Integer foundEdgeIdx = 0;
+                double minDistanceSidewalk = Double.MAX_VALUE;
+
+                if (edgePoint.getEdge() instanceof StreetEdge) {
+                    //TODO: maybe distance to point on current best edge would be better
+                    minDistanceSidewalk = SphericalDistanceLibrary
+                        .fastDistance(transitStop.getCoordinate(), edgePoint.getClosestPoint());
+                    //LOG.info("actualMinDistance: {}", minDistanceSidewalk);
+                }
+                LOG.info("Stop: {} conn to {} ({}) no SW cur min distance: {}",
+                    transitStop.getLabel(), edgePoint.getEdge().getName(),
+                    edgePoint.getEdgeInfo().getOsmID(), minDistanceSidewalk);
+
+                for (StreetEdge closestStreetEdge : Iterables
+                    .filter(closestEdges, StreetEdge.class)) {
+                    if (closestStreetEdge.isStairs()) {
+                        continue;
+                    }
+                    LineString closestStreetEdgeGeo = closestStreetEdge.getGeometry();
+                    //street geometry is looked only in the part where it is closest to closestStreetEdge
+                    /*closestStreetEdgeGeo = MaximalNearestSubline
+                        .getMaximalNearestSubline(closestStreetEdgeGeo,
+                            edgePoint.getEdge().getGeometry());
+                    LineString mainGeo = MaximalNearestSubline
+                        .getMaximalNearestSubline(edgePoint.getEdge().getGeometry(),
+                            closestStreetEdge.getGeometry());*/
+                    writeMNS.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                        transitStop.getModes().toString(), "edge", "0",
+                        Long.toString(closestStreetEdge.getOsmID())),
+                        (Geometry) closestStreetEdgeGeo);
+                    /*writeMNS.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                        transitStop.getModes().toString(), "main",
+                        Long.toString(edgePoint.getEdgeInfo().getOsmID()),
+                        Long.toString(closestStreetEdge.getOsmID())), (Geometry) mainGeo);*/
+                    if (!streetPolygon.covers(closestStreetEdgeGeo)) {
+                        //LOG.info("  Skipped edge {} ({}) not in polygon", closestStreetEdge.getPermission(), closestStreetEdge.getOsmID());
+                        continue;
+                    }
+
+                    String is_parallel = "0";
+                    String same_level = "0";
+                    if (closestStreetEdge.getLevel().equals(edgePoint.getLevel())) {
+                        same_level = "1";
+                    }
+                    double azimuthClosestStreetEdge = DirectionUtils
+                        .getAzimuthRad(closestStreetEdgeGeo);
+                    //TODO: check for level, angle it should be around 90 between transitStop projection and edge
+                    //And connection can't intersect with any edge
+                    if (parallel(DirectionUtils.getAzimuthRad(edgePoint.getEdge().getGeometry()),
+                        azimuthClosestStreetEdge)) {
+                        is_parallel = "1";
+                        //we search for street that can be walked on (sidewalk usually)
+                        if (closestStreetEdge.canTraverse(walking) &&
+                            !closestStreetEdge.canTraverse(driving) &&
+                            same_level.equals("1")) {
+                            candidateEdges.add(
+                                new CandidateEdge(closestStreetEdge, transitStop.getCoordinate(),
+                                    3.0, transitStop.getModes()));
+                            for (Edge anEdge : closestStreetEdge.getToVertex().getOutgoing()) {
+                                if (anEdge instanceof StreetEdge && anEdge
+                                    .isReverseOf(closestStreetEdge)) {
+                                    candidateEdges.add(new CandidateEdge((StreetEdge) anEdge,
+                                        transitStop.getCoordinate(), 3.0, transitStop.getModes()));
+                                    break;
+                                }
+                            }
+                            double curMinDistance = SphericalDistanceLibrary
+                                .fastDistance(transitStop.getCoordinate(),
+                                    closestStreetEdge.getGeometry());
+                            if (curMinDistance < minDistanceSidewalk) {
+                                minDistanceSidewalk = curMinDistance;
+                                foundClosestSidewalk = closestStreetEdge;
+                                LOG.info("  CLOSE street par, level, walked: {} {} ({}) {}",
+                                    curMinDistance, closestStreetEdge.getName(),
+                                    closestStreetEdge.getOsmID(),
+                                    closestStreetEdge.getPermission());
+                            } else {
+                                LOG.info("   far street par, level, walked: {} {} ({}) {}",
+                                    curMinDistance, closestStreetEdge.getName(),
+                                    closestStreetEdge.getOsmID(),
+                                    closestStreetEdge.getPermission());
+                            }
+                        }
+                    }
+                    writerParalelRoads.add(Arrays
+                        .asList(transitStop.getLabel(), transitStop.getName(),
+                            transitStop.getModes().toString(),
+                            closestStreetEdge.getPermission().toString(), is_parallel, same_level,
+                            Double.toString(FastMath.toDegrees(azimuthClosestStreetEdge)),
+                            foundEdgeIdx.toString(), Long.toString(closestStreetEdge.getOsmID())),
+                        closestStreetEdge.getGeometry());
+                    foundEdgeIdx++;
+                }
+
+                //Previously found streetEdge
+                if (edgePoint.getEdge() instanceof StreetEdge) {
+                    se = (StreetEdge) edgePoint.getEdge();
+                }
+
+                //if sidewalk was found we connect to the projected point on sidewalk
+                if (foundClosestSidewalk != null) {
+                    LOG.info("  Found closer street for {} : {} ({}) {}", transitStop.getLabel(),
+                        foundClosestSidewalk.getName(), foundClosestSidewalk.getOsmID(),
+                        foundClosestSidewalk.getPermission());
+                    LocationIndexedLine indexedSidewalk = new LocationIndexedLine(
+                        foundClosestSidewalk.getGeometry());
+                    LinearLocation stopLocation = indexedSidewalk
+                        .project(transitStop.getCoordinate());
+
+                    coordinate = stopLocation.getCoordinate(foundClosestSidewalk.getGeometry());
+                    minDistance = minDistanceSidewalk;
+                    se = foundClosestSidewalk;
+                }
+            } else {
+                if (edgePoint.getEdge() instanceof StreetEdge) {
+                    se = (StreetEdge) edgePoint.getEdge();
+                    LOG.info("Stop: {} connected to road with sidewalk", transitStop);
+                }
+            }
+
+            Collection<CandidateEdgeBundle> bundles = candidateEdges.binByDistanceAndAngle();
+            // initially set best bundle to the closest bundle
+            CandidateEdgeBundle best = null;
+            for (CandidateEdgeBundle bundle : bundles) {
+                if (best == null || bundle.best.score < best.best.score) {
+                    best = bundle;
+                    LOG.info("  New best: {}", bundle);
+                } else {
+                    LOG.info("  NOT best: {}", bundle);
+                }
+            }
+
+            if (se == null && best == null) {
+                LOG.info("Skipping transitMode {} in stop: {}", edgePoint.getTraverseMode(),
+                    transitStop);
+                continue;
+            }
+
+            boolean foundSameEdge = false;
+            if (best != null) {
+                for (CandidateEdge candidateEdge : best) {
+                    if (se != null && se.equals(candidateEdge.edge)) {
+                        foundSameEdge = true;
+                    }
+                    writerCe.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                            transitStop.getModes().toString(),
+                            Double.toString(candidateEdge.distance),
+                            Double.toString(candidateEdge.score),
+                            Boolean.toString(candidateEdge.endwise())),
+                        candidateEdge.edge.getGeometry());
+                    writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                        transitStop.getModes().toString(), "ce"), candidateEdge.nearestPointOnEdge);
+                }
+                LOG.info("CE has {} edges", best.size());
+            }
+
+            if (!foundSameEdge) {
+                LOG.info(" Different edge found in SE then CE");
+            }
+
+            LinkRequest request = new LinkRequest(networkLinkerLibrary);
+            //request.connectVertexToStreets(edgePoint.getClosestPoint(), transitStop.hasWheelchairEntrance());
+            String vertexLabel;
+            vertexLabel = "link for " + transitStop.getStopId();
+
+            statsMinDistance.add(minDistance);
+
+
+                /*LocationIndexedLine indexedEdge = new LocationIndexedLine(edgePoint.getEdge().getGeometry());
+                LinearLocation stopLocation = indexedEdge.project(transitStop.getCoordinate());
+
+                coordinate = stopLocation.getCoordinate(edgePoint.getEdge().getGeometry());*/
+            writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                transitStop.getModes().toString(), "found"), coordinate);
+
+            // if the bundle was caught endwise (T intersections and dead ends),
+            // get the intersection instead.
+            Collection<StreetVertex> currentNearbyStreetVertices = null;
+            //if (edges.endwise())
+            //TODO: numOfStopsEdgesNotMatchedToShapes
+            //else
+                /* is the stop right at an intersection? */
+                /*StreetVertex atIntersection = networkLinkerLibrary.index.getIntersectionAt(coordinate);
+                // if so, the stop can be linked directly to all vertices at the intersection
+                if (atIntersection != null) {
+                    //if intersection isn't publicTransit intersection
+                    if (!atIntersection.getOutgoingStreetEdges().isEmpty()) {
+                        nearbyStreetVertices = Arrays.asList(atIntersection);
+                        LOG.info("Connecting stop {} to intersection", transitStop);
+                    }
+                }
+                */
+
+            if (currentNearbyStreetVertices == null) {
+
+                if (best != null) {
+                    currentNearbyStreetVertices = request
+                        .getSplitterVertices(vertexLabel, best.toEdgeList(),
+                            transitStop.getCoordinate());
+                    LOG.info(" linking with CE");
+                } else {
+                    currentNearbyStreetVertices = request
+                        .getSplitterVertices(vertexLabel, Arrays.asList(se), coordinate);
+                    LOG.info(" linking normal");
+                }
+                //LOG.info("Splitting edge for stop {}", transitStop);
+            }
+
+            if (currentNearbyStreetVertices != null) {
+                for (StreetVertex sv : currentNearbyStreetVertices) {
+                    String isSidewalk = "0";
+                    if (foundClosestSidewalk != null) {
+                        isSidewalk = "1";
+                    }
+                    writerPointSV.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                        transitStop.getModes().toString(), isSidewalk), sv.getCoordinate());
+                }
+
+                if (nearbyStreetVertices == null) {
+                    nearbyStreetVertices = currentNearbyStreetVertices;
+                } else {
+                    nearbyStreetVertices.addAll(currentNearbyStreetVertices);
+                }
+            }
+            edge_index++;
+        }
+
+        return nearbyStreetVertices;
+    }
+
     @Override public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
         LOG.info("Linking transit stops to streets...with help of GTFS shapes");
         this.graph = graph;
@@ -486,273 +776,14 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
             if (alreadyLinked)
                 continue;
 
-            Collection<StreetVertex> nearbyStreetVertices = null; // new ArrayList<>(5);
+            Collection<StreetVertex> nearbyStreetVertices = null;
 
-            //Here we get edges and points to where we should link according to GTFS which are closest to the path where PT drives
-            //This can be roads on which bus drives or TRAM/RAIL/SUBWAY PublicTransitEdges
-            List<EdgePoint> edges = getTransitEdges(transitStop);
-
-            //statsMinDistance.add(transitStop.getLevels().size());
-
-            if (edges.isEmpty()) {
-                LOG.info(graph.addBuilderAnnotation(new StopUnlinked(transitStop)));
-                nUnlinked += 1;
-                continue;
+            //TODO: What if it has Ferry and other stuff
+            if (transitStop.getModes().contains(TraverseMode.FERRY)) {
+                //do stuff
+            } else {
+                nearbyStreetVertices = getVertices(transitStop);
             }
-
-            //Now for each of this edges we look around to find if there are some parallel streets which can be walked on
-            //Streets which have sidewalks are skipped
-            CandidateEdgeBundle candidateEdges = new CandidateEdgeBundle();
-            int edge_index = 0;
-            for (EdgePoint edgePoint : edges) {
-                StreetEdge se = null;
-                double minDistance = edgePoint.getMinDistance();
-                Coordinate coordinate = edgePoint.getClosestPoint();
-                StreetEdge foundClosestSidewalk = null;
-
-                //Current mambo jambo to add current closest street if it is streetEdge and reverse Edge
-                //TODO: check if street can actually be walked on. Better reverse detection
-                if (edgePoint.getEdge() instanceof StreetEdge) {
-                    candidateEdges.add(new CandidateEdge((StreetEdge) edgePoint.getEdge(), transitStop.getCoordinate(), 1.0, transitStop.getModes()));
-                    for (Edge anEdge : edgePoint.getEdge().getToVertex().getOutgoing()) {
-                        if (anEdge.isReverseOf(edgePoint.getEdge())) {
-                            candidateEdges.add(new CandidateEdge((StreetEdge) anEdge, transitStop.getCoordinate(), 1.0, transitStop.getModes()));
-                            break;
-                        }
-                    }
-                }
-
-
-
-
-                boolean hasSw = edgePoint.getEdgeInfo().hasSidewalk();
-                /*if (transitStop.getLabel().endsWith(":689")) {
-                    hasSw = false;
-                }*/
-                //Current connected street doesn't have a sidewalk
-                //We are searching for a parallel street which is a sidewalk
-                //Parallel street needs to be inside current street polygon be on same level and must be walkable but not drivable
-                if (!hasSw) {
-
-                    //writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(), transitStop.getModes().toString()), edgePoint.getClosestPoint());
-                    Geometry streetGeo = edgePoint.getEdge().getGeometry().getEnvelope();
-                    writerPoly.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
-                        transitStop.getModes().toString(), "envelope"), streetGeo);
-                    Geometry streetPolygon = (Geometry) edgePoint.getEdge().getGeometry()
-                        .buffer(0.00021);
-                    writerPoly.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
-                        transitStop.getModes().toString(), "polygon"), streetPolygon);
-                    //List<Edge> closestEdges = this.index.query(edgePoint.getEdge().getGeometry().getEnvelopeInternal());
-                    List<Edge> closestEdges = this.index.query(streetPolygon.getEnvelopeInternal());
-                    Integer foundEdgeIdx = 0;
-                    double minDistanceSidewalk = Double.MAX_VALUE;
-
-                    if (edgePoint.getEdge() instanceof StreetEdge) {
-                        //TODO: maybe distance to point on current best edge would be better
-                        minDistanceSidewalk = SphericalDistanceLibrary
-                            .fastDistance(transitStop.getCoordinate(), edgePoint.getClosestPoint());
-                        //LOG.info("actualMinDistance: {}", minDistanceSidewalk);
-                    }
-                    LOG.info("Stop: {} conn to {} ({}) no SW cur min distance: {}",
-                        transitStop.getLabel(), edgePoint.getEdge().getName(), edgePoint.getEdgeInfo().getOsmID(),
-                         minDistanceSidewalk);
-
-
-                    for (StreetEdge closestStreetEdge : Iterables
-                        .filter(closestEdges, StreetEdge.class)) {
-                        if (closestStreetEdge.isStairs()) {
-                            continue;
-                        }
-                        LineString closestStreetEdgeGeo = closestStreetEdge.getGeometry();
-                        //street geometry is looked only in the part where it is closest to closestStreetEdge
-                        //closestStreetEdgeGeo = MaximalNearestSubline.getMaximalNearestSubline(closestStreetEdgeGeo, edgePoint.getEdge().getGeometry());
-                        /*LineString mainGeo = MaximalNearestSubline.getMaximalNearestSubline(
-                            edgePoint.getEdge().getGeometry(), closestStreetEdge.getGeometry());*/
-                        writeMNS.add(Arrays.asList( transitStop.getLabel(), transitStop.getName(), transitStop.getModes().toString(), "edge",
-                            "0", Long.toString(closestStreetEdge.getOsmID())), (Geometry) closestStreetEdgeGeo);
-                        /*writeMNS.add(Arrays.asList( transitStop.getLabel(), transitStop.getName(), transitStop.getModes().toString(), "main",
-                            Long.toString(edgePoint.getEdgeInfo().getOsmID()), Long.toString(closestStreetEdge.getOsmID())), (Geometry) mainGeo);*/
-                        if (!streetPolygon.covers(closestStreetEdgeGeo)) {
-                            continue;
-                        }
-
-                        String is_parallel = "0";
-                        String same_level = "0";
-                        if (closestStreetEdge.getLevel().equals(edgePoint.getLevel())) {
-                            same_level = "1";
-                        }
-                        double azimuthClosestStreetEdge = DirectionUtils
-                            .getAzimuthRad(closestStreetEdgeGeo);
-                        //TODO: check for level, angle it should be around 90 between transitStop projection and edge
-                        //And connection can't intersect with any edge
-                        if (parallel(DirectionUtils.getAzimuthRad(edgePoint.getEdge().getGeometry()),
-                            azimuthClosestStreetEdge)) {
-                            is_parallel = "1";
-                            //we search for street that can be walked on (sidewalk usually)
-                            if (closestStreetEdge.canTraverse(walking) &&
-                                !closestStreetEdge.canTraverse(driving) &&
-                                same_level.equals("1")) {
-                                candidateEdges.add(new CandidateEdge(closestStreetEdge, transitStop.getCoordinate(), 3.0, transitStop.getModes()));
-                                for (Edge anEdge : closestStreetEdge.getToVertex().getOutgoing()) {
-                                    if (anEdge instanceof StreetEdge && anEdge.isReverseOf(closestStreetEdge)) {
-                                        candidateEdges.add(new CandidateEdge((StreetEdge) anEdge, transitStop.getCoordinate(), 3.0, transitStop.getModes()));
-                                        break;
-                                    }
-                                }
-                                double curMinDistance = SphericalDistanceLibrary
-                                    .fastDistance(transitStop.getCoordinate(),
-                                        closestStreetEdge.getGeometry());
-                                if (curMinDistance < minDistanceSidewalk) {
-                                    minDistanceSidewalk = curMinDistance;
-                                    foundClosestSidewalk = closestStreetEdge;
-                                    LOG.info("  CLOSE street par, level, walked: {} {} ({}) {}", curMinDistance, closestStreetEdge.getName(), closestStreetEdge.getOsmID(), closestStreetEdge.getPermission());
-                                } else {
-                                    LOG.info("   far street par, level, walked: {} {} ({}) {}", curMinDistance, closestStreetEdge.getName(), closestStreetEdge.getOsmID(), closestStreetEdge.getPermission());
-                                }
-                            }
-                        }
-                        writerParalelRoads.add(Arrays
-                            .asList(transitStop.getLabel(), transitStop.getName(),
-                                transitStop.getModes().toString(),
-                                closestStreetEdge.getPermission().toString(), is_parallel,
-                                same_level,
-                                Double.toString(FastMath.toDegrees(azimuthClosestStreetEdge)),
-                                foundEdgeIdx.toString(), Long.toString(closestStreetEdge.getOsmID())), closestStreetEdge.getGeometry());
-                        foundEdgeIdx++;
-                    }
-
-                    //Previously found streetEdge
-                    if (edgePoint.getEdge() instanceof StreetEdge) {
-                        se = (StreetEdge) edgePoint.getEdge();
-                    }
-
-
-                    //if sidewalk was found we connect to the projected point on sidewalk
-                    if (foundClosestSidewalk != null) {
-                        LOG.info("  Found closer street for {} : {} ({}) {}", transitStop.getLabel(),
-                            foundClosestSidewalk.getName(), foundClosestSidewalk.getOsmID(), foundClosestSidewalk.getPermission());
-                        LocationIndexedLine indexedSidewalk = new LocationIndexedLine(
-                            foundClosestSidewalk.getGeometry());
-                        LinearLocation stopLocation = indexedSidewalk
-                            .project(transitStop.getCoordinate());
-
-                        coordinate = stopLocation.getCoordinate(foundClosestSidewalk.getGeometry());
-                        minDistance = minDistanceSidewalk;
-                        se = foundClosestSidewalk;
-                    }
-                } else {
-                    if (edgePoint.getEdge() instanceof StreetEdge) {
-                        se = (StreetEdge) edgePoint.getEdge();
-                        LOG.info("Stop: {} connected to road with sidewalk", transitStop);
-                    }
-                }
-
-                Collection<CandidateEdgeBundle> bundles = candidateEdges.binByDistanceAndAngle();
-                // initially set best bundle to the closest bundle
-                CandidateEdgeBundle best = null;
-                for (CandidateEdgeBundle bundle : bundles) {
-                    if (best == null || bundle.best.score < best.best.score) {
-                        best = bundle;
-                        LOG.info("  New best: {}", bundle);
-                    } else {
-                        LOG.info("  NOT best: {}", bundle);
-                    }
-                }
-
-                if (se == null && best == null) {
-                    LOG.info("Skipping transitMode {} in stop: {}", edgePoint.getTraverseMode(),
-                        transitStop);
-                    continue;
-                }
-
-
-
-                boolean foundSameEdge = false;
-                if (best != null) {
-                    for (CandidateEdge candidateEdge : best) {
-                        if (se != null && se.equals(candidateEdge.edge)) {
-                            foundSameEdge = true;
-                        }
-                        writerCe.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
-                                transitStop.getModes().toString(), Double.toString(candidateEdge.distance),
-                                Double.toString(candidateEdge.score), Boolean.toString(candidateEdge.endwise())),
-                            candidateEdge.edge.getGeometry());
-                        writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
-                                transitStop.getModes().toString(), "ce"), candidateEdge.nearestPointOnEdge);
-                    }
-                    LOG.info("CE has {} edges", best.size());
-                }
-
-                if (!foundSameEdge) {
-                    LOG.info(" Different edge found in SE then CE");
-                }
-
-                LinkRequest request = new LinkRequest(networkLinkerLibrary);
-                //request.connectVertexToStreets(edgePoint.getClosestPoint(), transitStop.hasWheelchairEntrance());
-                String vertexLabel;
-                vertexLabel = "link for " + transitStop.getStopId();
-
-                statsMinDistance.add(minDistance);
-
-
-                /*LocationIndexedLine indexedEdge = new LocationIndexedLine(edgePoint.getEdge().getGeometry());
-                LinearLocation stopLocation = indexedEdge.project(transitStop.getCoordinate());
-
-                coordinate = stopLocation.getCoordinate(edgePoint.getEdge().getGeometry());*/
-                writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
-                    transitStop.getModes().toString(), "found"), coordinate);
-
-                // if the bundle was caught endwise (T intersections and dead ends),
-                // get the intersection instead.
-                Collection<StreetVertex> currentNearbyStreetVertices = null;
-                //if (edges.endwise())
-                //TODO: numOfStopsEdgesNotMatchedToShapes
-                //else
-                /* is the stop right at an intersection? */
-                /*StreetVertex atIntersection = networkLinkerLibrary.index.getIntersectionAt(coordinate);
-                // if so, the stop can be linked directly to all vertices at the intersection
-                if (atIntersection != null) {
-                    //if intersection isn't publicTransit intersection
-                    if (!atIntersection.getOutgoingStreetEdges().isEmpty()) {
-                        nearbyStreetVertices = Arrays.asList(atIntersection);
-                        LOG.info("Connecting stop {} to intersection", transitStop);
-                    }
-                }
-                */
-
-                if (currentNearbyStreetVertices == null) {
-
-                    if (best != null) {
-                        currentNearbyStreetVertices = request
-                            .getSplitterVertices(vertexLabel, best.toEdgeList(), transitStop.getCoordinate());
-                        LOG.info(" linking with CE");
-                    } else {
-                        currentNearbyStreetVertices = request
-                            .getSplitterVertices(vertexLabel, Arrays.asList(se), coordinate);
-                        LOG.info(" linking normal");
-                    }
-                    //LOG.info("Splitting edge for stop {}", transitStop);
-                }
-
-                if (currentNearbyStreetVertices != null){
-                    for (StreetVertex sv : currentNearbyStreetVertices) {
-                        String isSidewalk = "0";
-                        if (foundClosestSidewalk != null) {
-                            isSidewalk = "1";
-                        }
-                        writerPointSV.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
-                            transitStop.getModes().toString(), isSidewalk), sv.getCoordinate());
-                    }
-
-                    if (nearbyStreetVertices == null) {
-                        nearbyStreetVertices = currentNearbyStreetVertices;
-                    } else {
-                        nearbyStreetVertices.addAll(currentNearbyStreetVertices);
-                    }
-                }
-                edge_index++;
-            }
-
             if (nearbyStreetVertices != null) {
                 boolean wheelchairAccessible = transitStop.hasWheelchairEntrance();
                 //Actual linking happens
