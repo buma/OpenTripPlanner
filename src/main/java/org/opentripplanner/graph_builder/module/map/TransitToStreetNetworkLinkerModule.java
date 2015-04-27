@@ -42,6 +42,8 @@ import org.opentripplanner.routing.edgetype.loader.NetworkLinkerLibrary;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.routing.impl.CandidateEdge;
+import org.opentripplanner.routing.impl.CandidateEdgeBundle;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.util.GeometryCSVWriter;
@@ -81,6 +83,10 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
     private GeometryCSVWriter writerParalelRoads;
 
     private GeometryCSVWriter writerPointSV;
+
+    private GeometryCSVWriter writerCe;
+
+    private GeometryCSVWriter writeMNS;
 
     private Multiset<Integer> counts;
 
@@ -426,31 +432,38 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
         vertices.addAll(graph.getVertices());
 
         this.networkLinkerLibrary = new NetworkLinkerLibrary(graph, extra);
+
+        final boolean mainShouldWrite = false;
+        final boolean shouldWrite = false;
         writerStopShapesGeo = new GeometryCSVWriter(
             Arrays.asList("stop_id", "stop_name", "trip_pattern", "num_geo", "azimuth", "geo"),
-            "geo", "outMatcher/MBpatterns.csv", false);
+            "geo", "outMatcher/MBpatterns.csv", mainShouldWrite);
         writerTransitStop = new GeometryCSVWriter(
             Arrays.asList("stop_id", "stop_name", "num_geo", "geo", "modes"), "geo",
-            "outMatcher/MBpattern_stop.csv", false);
+            "outMatcher/MBpattern_stop.csv", mainShouldWrite);
         writerMatchedStreets = new GeometryCSVWriter(Arrays
             .asList("stop_id", "stop_name", "distance", "max_distance", "trimmed_distance",
                 "nearness_distance", "is_closest", "is_closest_max_d", "is_closest_trim_d",
                 "is_nearness_d", "num_geo", "edge_id", "distant", "parallel", "azimuth", "geo"),
-            "geo", "outMatcher/MBpattern_match.csv", false);
+            "geo", "outMatcher/MBpattern_match.csv", mainShouldWrite);
         writerClosestPoints = new GeometryCSVWriter(Arrays
             .asList("stop_id", "stop_name", "is_closest", "is_closest_max_d", "is_closest_trim_d",
                 "is_nearness_d", "edge_id", "distant", "parallel", "geo"), "geo",
-            "outMatcher/pattern_point.csv", false);
+            "outMatcher/pattern_point.csv", mainShouldWrite);
         //writerAzimuth = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", ))
-        writerPoint = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode", "geo"),
-            "geo", "outMatcher/MBpattern_wpoint.csv");
+        writerPoint = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode", "type", "geo"),
+            "geo", "outMatcher/MBpattern_wpoint.csv", shouldWrite);
         writerPoly = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode", "type", "geo"),
-            "geo", "outMatcher/MBpatterns_street_poly.csv");
+            "geo", "outMatcher/MBpatterns_street_poly.csv", shouldWrite);
         writerParalelRoads = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode",
             "permissions", "is_parallel", "same_level", "azimuth", "idx_edge", "edge_id", "geo"), "geo",
-            "outMatcher/MBpatterns_parallel.csv");
+            "outMatcher/MBpatterns_parallel.csv", shouldWrite);
         writerPointSV = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode",
-        "is_sidwewalk", "geo"), "geo", "outMatcher/MBStreet_v_P.csv");
+        "is_sidwewalk", "geo"), "geo", "outMatcher/MBStreet_v_P.csv", shouldWrite);
+        writerCe = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode",
+            "distance", "score", "endwise", "geo"), "geo", "outMatcher/MBcedges.csv", shouldWrite);
+        writeMNS = new GeometryCSVWriter(Arrays.asList("stop_id", "stop_name", "mode", "type", "main_edge_id", "street_edge_id",
+            "geo"), "geo", "outMatcher/MB_mns.csv", shouldWrite);
         counts = HashMultiset.create(10);
         statsMinDistance = new DistanceStatistics(true);
         statsMinDistance1 = new DistanceStatistics(true);
@@ -470,19 +483,24 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                 }
             }
 
-            //for each street we found if it is correct to link to or if it has neighbour streets which are parallel to it to which we can link
-            //we add streets to linked streets
+            if (alreadyLinked)
+                continue;
+
+            //Here we get edges and points to where we should link according to GTFS which are closest to the path where PT drives
+            //This can be roads on which bus drives or TRAM/RAIL/SUBWAY PublicTransitEdges
             List<EdgePoint> edges = getTransitEdges(transitStop);
 
             //statsMinDistance.add(transitStop.getLevels().size());
-            if (alreadyLinked)
-                continue;
+
             if (edges.isEmpty()) {
                 LOG.info(graph.addBuilderAnnotation(new StopUnlinked(transitStop)));
                 nUnlinked += 1;
                 continue;
             }
 
+            //Now for each of this edges we look around to find if there are some parallel streets which can be walked on
+            //Streets which have sidewalks are skipped
+            CandidateEdgeBundle candidateEdges = new CandidateEdgeBundle();
             int edge_index = 0;
             for (EdgePoint edgePoint : edges) {
                 StreetEdge se = null;
@@ -490,9 +508,29 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                 Coordinate coordinate = edgePoint.getClosestPoint();
                 StreetEdge foundClosestSidewalk = null;
 
+                //Current mambo jambo to add current closest street if it is streetEdge and reverse Edge
+                //TODO: check if street can actually be walked on. Better reverse detection
+                if (edgePoint.getEdge() instanceof StreetEdge) {
+                    candidateEdges.add(new CandidateEdge((StreetEdge) edgePoint.getEdge(), transitStop.getCoordinate(), 1.0, transitStop.getModes()));
+                    for (Edge anEdge : edgePoint.getEdge().getToVertex().getOutgoing()) {
+                        if (anEdge.isReverseOf(edgePoint.getEdge())) {
+                            candidateEdges.add(new CandidateEdge((StreetEdge) anEdge, transitStop.getCoordinate(), 1.0, transitStop.getModes()));
+                            break;
+                        }
+                    }
+                }
+
+
+
+
+                boolean hasSw = edgePoint.getEdgeInfo().hasSidewalk();
+                /*if (transitStop.getLabel().endsWith(":689")) {
+                    hasSw = false;
+                }*/
                 //Current connected street doesn't have a sidewalk
                 //We are searching for a parallel street which is a sidewalk
-                if (!edgePoint.getEdgeInfo().hasSidewalk()) {
+                //Parallel street needs to be inside current street polygon be on same level and must be walkable but not drivable
+                if (!hasSw) {
 
                     //writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(), transitStop.getModes().toString()), edgePoint.getClosestPoint());
                     Geometry streetGeo = edgePoint.getEdge().getGeometry().getEnvelope();
@@ -520,9 +558,18 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
                     for (StreetEdge closestStreetEdge : Iterables
                         .filter(closestEdges, StreetEdge.class)) {
+                        if (closestStreetEdge.isStairs()) {
+                            continue;
+                        }
                         LineString closestStreetEdgeGeo = closestStreetEdge.getGeometry();
                         //street geometry is looked only in the part where it is closest to closestStreetEdge
                         //closestStreetEdgeGeo = MaximalNearestSubline.getMaximalNearestSubline(closestStreetEdgeGeo, edgePoint.getEdge().getGeometry());
+                        /*LineString mainGeo = MaximalNearestSubline.getMaximalNearestSubline(
+                            edgePoint.getEdge().getGeometry(), closestStreetEdge.getGeometry());*/
+                        writeMNS.add(Arrays.asList( transitStop.getLabel(), transitStop.getName(), transitStop.getModes().toString(), "edge",
+                            "0", Long.toString(closestStreetEdge.getOsmID())), (Geometry) closestStreetEdgeGeo);
+                        /*writeMNS.add(Arrays.asList( transitStop.getLabel(), transitStop.getName(), transitStop.getModes().toString(), "main",
+                            Long.toString(edgePoint.getEdgeInfo().getOsmID()), Long.toString(closestStreetEdge.getOsmID())), (Geometry) mainGeo);*/
                         if (!streetPolygon.covers(closestStreetEdgeGeo)) {
                             continue;
                         }
@@ -543,6 +590,13 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                             if (closestStreetEdge.canTraverse(walking) &&
                                 !closestStreetEdge.canTraverse(driving) &&
                                 same_level.equals("1")) {
+                                candidateEdges.add(new CandidateEdge(closestStreetEdge, transitStop.getCoordinate(), 3.0, transitStop.getModes()));
+                                for (Edge anEdge : closestStreetEdge.getToVertex().getOutgoing()) {
+                                    if (anEdge instanceof StreetEdge && anEdge.isReverseOf(closestStreetEdge)) {
+                                        candidateEdges.add(new CandidateEdge((StreetEdge) anEdge, transitStop.getCoordinate(), 3.0, transitStop.getModes()));
+                                        break;
+                                    }
+                                }
                                 double curMinDistance = SphericalDistanceLibrary
                                     .fastDistance(transitStop.getCoordinate(),
                                         closestStreetEdge.getGeometry());
@@ -565,6 +619,7 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                         foundEdgeIdx++;
                     }
 
+                    //Previously found streetEdge
                     if (edgePoint.getEdge() instanceof StreetEdge) {
                         se = (StreetEdge) edgePoint.getEdge();
                     }
@@ -590,10 +645,44 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                     }
                 }
 
-                if (se == null) {
+                Collection<CandidateEdgeBundle> bundles = candidateEdges.binByDistanceAndAngle();
+                // initially set best bundle to the closest bundle
+                CandidateEdgeBundle best = null;
+                for (CandidateEdgeBundle bundle : bundles) {
+                    if (best == null || bundle.best.score < best.best.score) {
+                        best = bundle;
+                        LOG.info("  New best: {}", bundle);
+                    } else {
+                        LOG.info("  NOT best: {}", bundle);
+                    }
+                }
+
+                if (se == null && best == null) {
                     LOG.info("Skipping transitMode {} in stop: {}", edgePoint.getTraverseMode(),
                         transitStop);
                     continue;
+                }
+
+
+
+                boolean foundSameEdge = false;
+                if (best != null) {
+                    for (CandidateEdge candidateEdge : best) {
+                        if (se != null && se.equals(candidateEdge.edge)) {
+                            foundSameEdge = true;
+                        }
+                        writerCe.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                                transitStop.getModes().toString(), Double.toString(candidateEdge.distance),
+                                Double.toString(candidateEdge.score), Boolean.toString(candidateEdge.endwise())),
+                            candidateEdge.edge.getGeometry());
+                        writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
+                                transitStop.getModes().toString(), "ce"), candidateEdge.nearestPointOnEdge);
+                    }
+                    LOG.info("CE has {} edges", best.size());
+                }
+
+                if (!foundSameEdge) {
+                    LOG.info(" Different edge found in SE then CE");
                 }
 
                 LinkRequest request = new LinkRequest(networkLinkerLibrary);
@@ -609,7 +698,8 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
                 coordinate = stopLocation.getCoordinate(edgePoint.getEdge().getGeometry());*/
                 writerPoint.add(Arrays.asList(transitStop.getLabel(), transitStop.getName(),
-                    transitStop.getModes().toString()), coordinate);
+                    transitStop.getModes().toString(), "found"), coordinate);
+
                 // if the bundle was caught endwise (T intersections and dead ends),
                 // get the intersection instead.
                 Collection<StreetVertex> nearbyStreetVertices = null; // new ArrayList<>(5);
@@ -629,8 +719,16 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
                 */
 
                 if (nearbyStreetVertices == null) {
-                    nearbyStreetVertices = request
-                        .getSplitterVertices(vertexLabel, Arrays.asList(se), coordinate);
+
+                    if (best != null) {
+                        nearbyStreetVertices = request
+                            .getSplitterVertices(vertexLabel, best.toEdgeList(), transitStop.getCoordinate());
+                        LOG.info(" linking with CE");
+                    } else {
+                        nearbyStreetVertices = request
+                            .getSplitterVertices(vertexLabel, Arrays.asList(se), coordinate);
+                        LOG.info(" linking normal");
+                    }
                     //LOG.info("Splitting edge for stop {}", transitStop);
                 }
 
@@ -669,6 +767,8 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
         writerPoly.close();
         writerParalelRoads.close();
         writerPointSV.close();
+        writerCe.close();
+        writeMNS.close();
         for (Multiset.Entry<Integer> stop : counts.entrySet()) {
             System.out.println(stop.getElement() + ": " + stop.getCount());
         }
