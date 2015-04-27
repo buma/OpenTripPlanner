@@ -106,7 +106,7 @@ public class TransitToStreetNetworkLinkerModule implements GraphBuilderModule {
 
     private static final TraverseModeSet driving = new TraverseModeSet(TraverseMode.CAR);
 
-    private static final double ANGLE_DIFF = Math.PI / 18; // 10 degrees
+    private static final double ANGLE_DIFF = Math.PI / 12; // 15 degrees
 
     STRtree createIndex() {
         STRtree edgeIndex = new STRtree();
