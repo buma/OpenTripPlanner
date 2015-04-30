@@ -255,7 +255,7 @@ public class OSMDatabase implements OpenStreetMapContentHandler {
         }
         /* An area can be specified as such, or be one by default as an amenity */
         if ((way.isTag("area", "yes") || way.isTag("amenity", "parking") || way.isTag("amenity",
-                "bicycle_parking")) && way.getNodeRefs().size() > 2) {
+                "bicycle_parking") || way.isTag("amenity", "ferry_terminal")) && way.getNodeRefs().size() > 2) {
             // this is an area that's a simple polygon. So we can just add it straight
             // to the areas, if it's not part of a relation.
             if (!areaWayIds.contains(wayId)) {
