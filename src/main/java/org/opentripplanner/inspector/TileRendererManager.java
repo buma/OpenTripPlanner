@@ -56,6 +56,14 @@ public class TileRendererManager {
         renderers.put("traversal", new EdgeVertexTileRenderer(
                 new TraversalPermissionsEdgeRenderer()));
         renderers.put("wheelchair", new EdgeVertexTileRenderer(new WheelchairEdgeRenderer()));
+        /*renderers.put("transit-numlevels", new EdgeVertexTileRenderer(new TransitNumLevelRenderer()));
+        renderers.put("transit-levels", new EdgeVertexTileRenderer(new TransitLevelRenderer()));
+        renderers.put("street-levels", new EdgeVertexTileRenderer(new StreetLevelRenderer()));
+        renderers.put("wanted-con", new EdgeVertexTileRenderer(new wantedVertexRenderer()));*/
+        renderers.put("streetlinks", new EdgeVertexTileRenderer(new LinkRenderer()));
+        renderers.put("pattern-hops", new EdgeVertexTileRenderer(new PatternHopRenderer()));
+        renderers.put("osm-stops", new EdgeVertexTileRenderer(new OSMStopRenderer()));
+        renderers.put("transit-edge", new EdgeVertexTileRenderer(new TransitStreetEdgeRenderer()));
     }
 
     public void registerRenderer(String layer, TileRenderer tileRenderer) {
