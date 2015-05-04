@@ -16,6 +16,8 @@
 
 package org.opentripplanner.openstreetmap.model;
 
+import org.opentripplanner.routing.core.TraverseMode;
+
 public class OSMNode extends OSMWithTags {
 
     public double lat;
@@ -64,7 +66,22 @@ public class OSMNode extends OSMWithTags {
                 || "tram_stop".equals(getTag("railway"))
                 || "station".equals(getTag("railway"))
                 || "halt".equals(getTag("railway"))
-                || "bus_station".equals(getTag("amenity"));
+                || "bus_station".equals(getTag("amenity"))
+                || "ferry_terminal".equals(getTag("amenity"));
+    }
+
+    @Override public TraverseMode getPublicTransitType() {
+        if ("bus_stop".equals(getTag("highway")) || "bus_station".equals(getTag("amenity"))) {
+            return TraverseMode.BUS;
+        } else if ("tram_stop".equals(getTag("railway"))) {
+            return TraverseMode.TRAM;
+        } else if ("station".equals(getTag("railway")) || "halt".equals(getTag("railway"))) {
+            return TraverseMode.RAIL;
+        } else if ("ferry_terminal".equals(getTag("amenity"))) {
+            return TraverseMode.FERRY;
+        } else {
+            return TraverseMode.LEG_SWITCH;
+        }
     }
 
     /**

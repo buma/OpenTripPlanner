@@ -1225,10 +1225,9 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                 if (node.isStop()) {
                     String ref = node.getTag("ref");
                     String name = node.getTag("name");
-                    if (ref != null) {
-                        TransitStopStreetVertex tsv = new TransitStopStreetVertex(graph, label, coordinate.x, coordinate.y, name, ref);
-                        iv = tsv;
-                    }
+                    TransitStopStreetVertex tsv = new TransitStopStreetVertex(graph, label, coordinate.x, coordinate.y, name, ref,
+                        node.getPublicTransitType());
+                    iv = tsv;
                 }
 
                 if (iv == null) {
