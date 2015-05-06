@@ -13,12 +13,8 @@
 
 package org.opentripplanner.graph_builder.module.osm;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -359,5 +355,9 @@ public class WayPropertySet {
             return null;
         
         return metersSecond;
+    }
+
+    List<WayPropertyPicker> getWayProperties() {
+        return Collections.unmodifiableList(wayProperties);
     }
 }

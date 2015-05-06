@@ -13,6 +13,11 @@
 
 package org.opentripplanner.graph_builder.module.osm;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -23,6 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.csvreader.CsvWriter;
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Multiset;
 import org.opentripplanner.common.TurnRestriction;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
@@ -37,10 +45,7 @@ import org.opentripplanner.graph_builder.services.DefaultStreetEdgeFactory;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
 import org.opentripplanner.graph_builder.services.StreetEdgeFactory;
 import org.opentripplanner.graph_builder.services.osm.CustomNamer;
-import org.opentripplanner.openstreetmap.model.OSMLevel;
-import org.opentripplanner.openstreetmap.model.OSMNode;
-import org.opentripplanner.openstreetmap.model.OSMWay;
-import org.opentripplanner.openstreetmap.model.OSMWithTags;
+import org.opentripplanner.openstreetmap.model.*;
 import org.opentripplanner.openstreetmap.services.OpenStreetMapProvider;
 import org.opentripplanner.routing.alertpatch.Alert;
 import org.opentripplanner.routing.bike_park.BikePark;
@@ -143,6 +148,16 @@ public class OpenStreetMapModule implements GraphBuilderModule {
      */
     public boolean staticBikeParkAndRide = false;
 
+    /**
+     * Folder with input OSM files in which permission visualization is written
+     */
+    public File permissionsOutputDir;
+
+    /**
+     * Should way permissions be calculated
+     */
+    public boolean calculateWayPermissions = false;
+
     public List<String> provides() {
         return Arrays.asList("streets", "turns");
     }
@@ -226,6 +241,8 @@ public class OpenStreetMapModule implements GraphBuilderModule {
          */
         private float bestBikeSafety = 1.0f;
 
+        private Multiset<OSMWayForPerm> usedWayPermissions;
+
         // track OSM nodes which are decomposed into multiple graph vertices because they are
         // elevators. later they will be iterated over to build ElevatorEdges between them.
         private HashMap<Long, HashMap<OSMLevel, IntersectionVertex>> multiLevelNodes = new HashMap<Long, HashMap<OSMLevel, IntersectionVertex>>();
@@ -261,7 +278,15 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             // figure out which nodes that are actually intersections
             initIntersectionNodes();
 
+            if (calculateWayPermissions) {
+                visualizeWayPermissions();
+            }
+
             buildBasicGraph();
+
+            if (calculateWayPermissions) {
+                outputWayPermissions();
+            }
             if (skipVisibility) {
                 LOG.info("Skipping visibility graph construction for walkable areas.");
             } else {
@@ -288,6 +313,52 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
             applyBikeSafetyFactor(graph);
         } // END buildGraph()
+
+        private void outputWayPermissions() {
+            try {
+                CsvWriter printWriter = new CsvWriter(new File(permissionsOutputDir, "usage.csv").getCanonicalPath(), ',', Charset.forName(
+                    "UTF8"));
+                printWriter.writeRecord(new String[]{"tags", "count"});
+                for (Multiset.Entry<OSMWayForPerm> entry : usedWayPermissions.entrySet()) {
+                    printWriter.writeRecord(new String[]{entry.getElement().stripTagsToString(), Integer.toString(entry.getCount())});
+                }
+                printWriter.close();
+            } catch (FileNotFoundException e) {
+                LOG.error("Usage file couldn't be created: {}", e);
+            } catch (IOException e) {
+                LOG.error("IO Exception creating usage file: {}", e);
+            }
+
+        }
+
+        private void visualizeWayPermissions() {
+            LOG.info("Getting way permissions");
+            usedWayPermissions = HashMultiset.create();
+            //Set<OSMTag> tagValues = new HashSet<OSMTag>(3*wayPropertySet.getWayProperties().size());
+            List<OSMSpecifier> specifiers = new ArrayList<>(3*wayPropertySet.getWayProperties().size());
+            try {
+                PrintWriter printWriter = new PrintWriter(new File(permissionsOutputDir, "permissions.csv"));
+                for (WayPropertyPicker propertyPicker: wayPropertySet.getWayProperties()) {
+                    OSMSpecifier specifier = propertyPicker.getSpecifier();
+                    printWriter.println(specifier.toString());
+                    //tagValues.addAll(specifier.getTags());
+                    specifiers.add(specifier);
+                }
+                OSMWayForPerm.fillPermissionsTags(specifiers);
+                printWriter.close();
+                LOG.info("Tags that match all values:");
+                for (String tag : OSMWayForPerm.getTagsMatchAllValues()) {
+                    LOG.info(tag);
+                }
+                //For each way we need to save:
+                //- what permissions are given
+                //- which specifiers are used
+                //- which ways have this tags
+            } catch (FileNotFoundException e) {
+                LOG.error("Permissions file couldn't be created: {}", e);
+            }
+
+        }
 
         private void processBikeRentalNodes() {
             LOG.info("Processing bike rental nodes...");
@@ -528,6 +599,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                 wayIndex++;
 
                 WayProperties wayData = wayPropertySet.getDataForWay(way);
+                usedWayPermissions.add(new OSMWayForPerm(way));
 
                 setWayName(way);
 

@@ -25,7 +25,7 @@ import java.util.Map;
 public class OSMWithTags {
 
     /* To save memory this is only created when an entity actually has tags. */
-    private Map<String, String> _tags;
+    protected Map<String, String> _tags;
 
     protected long id;
 

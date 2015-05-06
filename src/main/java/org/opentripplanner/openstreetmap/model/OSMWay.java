@@ -21,7 +21,7 @@ import java.util.List;
 
 public class OSMWay extends OSMWithTags {
 
-    private List<Long> _nodes = new ArrayList<Long>();
+    protected List<Long> _nodes = new ArrayList<Long>();
 
     public void addNodeRef(OSMNodeRef nodeRef) {
         _nodes.add(nodeRef.getRef());
