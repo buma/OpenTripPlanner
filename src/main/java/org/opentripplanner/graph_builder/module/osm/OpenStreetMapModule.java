@@ -29,8 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.csvreader.CsvWriter;
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
+import com.google.common.collect.*;
 import org.opentripplanner.common.TurnRestriction;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
@@ -84,7 +83,6 @@ import org.opentripplanner.routing.vertextype.TransitStopStreetVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Iterables;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -243,6 +241,10 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
         private Multiset<OSMWayForPerm> usedWayPermissions;
 
+        private Map<OSMWayForPerm, P2<StreetTraversalPermission>> wayPermissionsMap;
+
+        private SetMultimap<P2<StreetTraversalPermission>, OSMWayForPerm> permissionWayMap;
+
         // track OSM nodes which are decomposed into multiple graph vertices because they are
         // elevators. later they will be iterated over to build ElevatorEdges between them.
         private HashMap<Long, HashMap<OSMLevel, IntersectionVertex>> multiLevelNodes = new HashMap<Long, HashMap<OSMLevel, IntersectionVertex>>();
@@ -316,24 +318,51 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
         private void outputWayPermissions() {
             try {
-                CsvWriter printWriter = new CsvWriter(new File(permissionsOutputDir, "usage.csv").getCanonicalPath(), ',', Charset.forName(
+                CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "usage.csv").getCanonicalPath(), ',', Charset.forName(
                     "UTF8"));
-                printWriter.writeRecord(new String[]{"tags", "count"});
+                csvWriter.writeRecord(new String[] { "tags", "count" });
                 for (Multiset.Entry<OSMWayForPerm> entry : usedWayPermissions.entrySet()) {
-                    printWriter.writeRecord(new String[]{entry.getElement().stripTagsToString(), Integer.toString(entry.getCount())});
+                    csvWriter.writeRecord(new String[] { entry.getElement().stripTagsToString(),
+                        Integer.toString(entry.getCount()) });
                 }
-                printWriter.close();
+                csvWriter.close();
             } catch (FileNotFoundException e) {
                 LOG.error("Usage file couldn't be created: {}", e);
             } catch (IOException e) {
                 LOG.error("IO Exception creating usage file: {}", e);
             }
 
+            try {
+                CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "wayPermissions.csv").getCanonicalPath(),
+                    ',', Charset.forName("UTF8"));
+                csvWriter.writeRecord(new String[]{"tags", "permissions"});
+                for (Map.Entry<OSMWayForPerm, P2<StreetTraversalPermission>> wayPermission : wayPermissionsMap.entrySet()) {
+                    csvWriter.writeRecord(new String[]{wayPermission.getKey().stripTagsToString(), wayPermission.getValue().toString()});
+                }
+                csvWriter.close();
+            } catch (IOException e) {
+                LOG.error("IO Exception creating wayPermissons file: {}", e);
+            }
+
+            try {
+                CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "permissionsWay.csv").getCanonicalPath(),
+                    ',', Charset.forName("UTF8"));
+                csvWriter.writeRecord(new String[]{"permissions", "tags"});
+                for (Map.Entry<P2<StreetTraversalPermission>, OSMWayForPerm> permEntry : permissionWayMap.entries()) {
+                    csvWriter.writeRecord(new String[] { permEntry.getKey().toString(),
+                        permEntry.getValue().stripTagsToString() });
+                }
+                csvWriter.close();
+            } catch (IOException e) {
+                LOG.error("IO Exception creating permissonsWay file: {}", e);
+            }
         }
 
         private void visualizeWayPermissions() {
             LOG.info("Getting way permissions");
             usedWayPermissions = HashMultiset.create();
+            wayPermissionsMap = new HashMap<>();
+            permissionWayMap = HashMultimap.create();
             //Set<OSMTag> tagValues = new HashSet<OSMTag>(3*wayPropertySet.getWayProperties().size());
             List<OSMSpecifier> specifiers = new ArrayList<>(3*wayPropertySet.getWayProperties().size());
             try {
@@ -599,7 +628,10 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                 wayIndex++;
 
                 WayProperties wayData = wayPropertySet.getDataForWay(way);
-                usedWayPermissions.add(new OSMWayForPerm(way));
+                OSMWayForPerm osmWayForPerm = new OSMWayForPerm(way);
+                if (calculateWayPermissions) {
+                    usedWayPermissions.add(osmWayForPerm);
+                }
 
                 setWayName(way);
 
@@ -717,7 +749,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                         }
                     }
                     P2<StreetEdge> streets = getEdgesForStreet(startEndpoint, endEndpoint,
-                            way, i, osmStartNode.getId(), osmEndNode.getId(), permissions, geometry);
+                            osmWayForPerm, i, osmStartNode.getId(), osmEndNode.getId(), permissions, geometry);
 
                     StreetEdge street = streets.first;
                     StreetEdge backStreet = streets.second;
@@ -1048,7 +1080,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
          * @param start
          */
         private P2<StreetEdge> getEdgesForStreet(IntersectionVertex start,
-                                                      IntersectionVertex end, OSMWay way, int index, long startNode, long endNode,
+                                                      IntersectionVertex end, OSMWayForPerm way, int index, long startNode, long endNode,
                                                       StreetTraversalPermission permissions, LineString geometry) {
             // No point in returning edges that can't be traversed by anyone.
             if (permissions.allowsNothing()) {
@@ -1061,6 +1093,18 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
             P2<StreetTraversalPermission> permissionPair = OSMFilter.getPermissions(permissions,
                     way);
+            if (calculateWayPermissions) {
+                if (wayPermissionsMap.containsKey(way)) {
+                    P2<StreetTraversalPermission> containedPermission = wayPermissionsMap.get(way);
+                    if (!containedPermission.equals(permissionPair)) {
+                        LOG.error("Contained permissions differ from permission pair for: {}", way.stripTagsToString());
+                    }
+                } else {
+                    wayPermissionsMap.put(way, permissionPair);
+
+                }
+                permissionWayMap.put(permissionPair, way);
+            }
             StreetTraversalPermission permissionsFront = permissionPair.first;
             StreetTraversalPermission permissionsBack = permissionPair.second;
 
