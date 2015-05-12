@@ -25,7 +25,13 @@ import javax.media.jai.InterpolationBilinear;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.Interpolator2D;
 import org.geotools.geometry.DirectPosition2D;
+import org.geotools.geometry.jts.JTS;
+import org.geotools.referencing.CRS;
 import org.opengis.coverage.Coverage;
+import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.TransformException;
 import org.opentripplanner.common.geometry.PackedCoordinateSequence;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
@@ -107,7 +113,7 @@ public class ElevationModule implements GraphBuilderModule {
             for (Edge ee : gv.getOutgoing()) {
                 if (ee instanceof StreetWithElevationEdge) {
                     StreetWithElevationEdge edgeWithElevation = (StreetWithElevationEdge) ee;
-                    processEdge(graph, edgeWithElevation);
+                    processEdge(graph, edgeWithElevation, gridCov.getCoordinateReferenceSystem());
                     if (edgeWithElevation.getElevationProfile() != null && !edgeWithElevation.isElevationFlattened()) {
                         edgesWithElevation.add(edgeWithElevation);
                     }
@@ -324,7 +330,7 @@ public class ElevationModule implements GraphBuilderModule {
      * @param ee the street edge
      * @param graph the graph (used only for error handling)
      */
-    private void processEdge(Graph graph, StreetWithElevationEdge ee) {
+    private void processEdge(Graph graph, StreetWithElevationEdge ee, CoordinateReferenceSystem crs) {
         if (ee.getElevationProfile() != null) {
             return; /* already set up */
         }
@@ -341,7 +347,7 @@ public class ElevationModule implements GraphBuilderModule {
         }
 
         // initial sample (x = 0)
-        coordList.add(new Coordinate(0, getElevation(coords[0])));
+        coordList.add(new Coordinate(0, getElevation(coords[0], crs)));
 
         // loop for edge-internal samples
         for (double x = distanceBetweenSamplesM; x < edgeLenM; x += distanceBetweenSamplesM) {
@@ -351,11 +357,11 @@ public class ElevationModule implements GraphBuilderModule {
             }
 
             Coordinate internal = getPointAlongEdge(coords, edgeLenM, x / edgeLenM);
-            coordList.add(new Coordinate(x, getElevation(internal)));
+            coordList.add(new Coordinate(x, getElevation(internal, crs)));
         }
 
         // final sample (x = edge length)
-        coordList.add(new Coordinate(edgeLenM, getElevation(coords[coords.length - 1])));
+        coordList.add(new Coordinate(edgeLenM, getElevation(coords[coords.length - 1], crs)));
 
         // construct the PCS
         Coordinate coordArr[] = new Coordinate[coordList.size()];
@@ -416,10 +422,21 @@ public class ElevationModule implements GraphBuilderModule {
      * Method for retrieving the elevation at a given Coordinate.
      * 
      * @param c the coordinate (NAD83)
+     * @param crs
      * @return elevation in meters
      */
-    private double getElevation(Coordinate c) {
-        return getElevation(c.x, c.y);
+    private double getElevation(Coordinate c, CoordinateReferenceSystem crs) {
+        try {
+            CoordinateReferenceSystem OSMcrs = CRS.decode("EPSG:4326");
+            MathTransform transform = CRS.findMathTransform(crs, OSMcrs);
+            Coordinate transforemed = JTS.transform(c, null, transform);
+            return getElevation(transforemed.x, transforemed.y);
+        } catch (FactoryException e) {
+            e.printStackTrace();
+        } catch (TransformException e) {
+            e.printStackTrace();
+        }
+        return 5;
     }
 
     /**
