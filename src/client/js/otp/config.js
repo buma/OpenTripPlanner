@@ -22,7 +22,8 @@ otp.config = {
         'sl': otp.locale.Slovenian,
         'fr': otp.locale.French,
         'it': otp.locale.Italian,
-        'ca_ES': otp.locale.Catalan
+        'ca_ES': otp.locale.Catalan,
+        'zh' : otp.locale.Chinese
     },
 
     languageChooser : function() {

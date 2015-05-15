@@ -3,6 +3,7 @@ I18NEXT=./node_modules/.bin/i18next-conv
 LOCALE_FOLDER=./src/client/i18n
 BABEL_CFG=$(LOCALE_FOLDER)/babel.cfg
 TEMPLATE_FILE=$(LOCALE_FOLDER)/messages.pot
+#zh is missing because converting to js makes invalid files
 LANGS=sl en fr de it ca_ES
 JS_FILESPATH=./src/client/js/otp
 JS_FILES = $(shell find $(JS_FILESPATH)/ -name '*.js')
