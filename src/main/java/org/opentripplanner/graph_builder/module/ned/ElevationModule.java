@@ -73,6 +73,8 @@ public class ElevationModule implements GraphBuilderModule {
      */
     private double distanceBetweenSamplesM = 10;
 
+    private MathTransform transform;
+
     public ElevationModule() { /* This makes me a "bean" */ };
     
     public ElevationModule(ElevationGridCoverageFactory factory) {
@@ -99,6 +101,13 @@ public class ElevationModule implements GraphBuilderModule {
     public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
         gridCoverageFactory.setGraph(graph);
         Coverage gridCov = gridCoverageFactory.getGridCoverage();
+
+        try {
+            CoordinateReferenceSystem OSMcrs = CRS.decode("EPSG:4326");
+             transform = CRS.findMathTransform(OSMcrs, gridCov.getCoordinateReferenceSystem());
+        } catch (FactoryException e) {
+            e.printStackTrace();
+        }
 
         // If gridCov is a GridCoverage2D, apply a bilinear interpolator. Otherwise, just use the
         // coverage as is (note: UnifiedGridCoverages created by NEDGridCoverageFactoryImpl handle
@@ -427,12 +436,13 @@ public class ElevationModule implements GraphBuilderModule {
      */
     private double getElevation(Coordinate c, CoordinateReferenceSystem crs) {
         try {
-            CoordinateReferenceSystem OSMcrs = CRS.decode("EPSG:4326");
-            MathTransform transform = CRS.findMathTransform(crs, OSMcrs);
-            Coordinate transforemed = JTS.transform(c, null, transform);
-            return getElevation(transforemed.x, transforemed.y);
-        } catch (FactoryException e) {
-            e.printStackTrace();
+            //FIXME: why must the order here be changed so that it works?
+            Coordinate inv_coordinate = new Coordinate(c.y, c.x);
+            Coordinate transforemed = JTS.transform(inv_coordinate, null, transform);
+            //FIXME: and why must it be changed here again
+            return getElevation(transforemed.y, transforemed.x);
+            //return getElevation(c.x, c.y);
+            //return getElevation(c.x, c.y, OSMcrs);
         } catch (TransformException e) {
             e.printStackTrace();
         }
