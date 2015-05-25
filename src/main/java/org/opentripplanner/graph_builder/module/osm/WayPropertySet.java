@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.common.model.T2;
+import org.opentripplanner.openstreetmap.model.OSMPermissionCount;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
 import org.opentripplanner.routing.alertpatch.Alert;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
@@ -90,7 +91,7 @@ public class WayPropertySet {
      * Applies the WayProperties whose OSMPicker best matches this way. In addition, WayProperties that are mixins
      * will have their safety values applied if they match at all.
      */
-    public WayProperties getDataForWay(OSMWithTags way) {
+    public WayProperties getDataForWay(OSMWithTags way, OSMPermissionCount permissionCount) {
         WayProperties leftResult = defaultProperties;
         WayProperties rightResult = defaultProperties;
         int bestLeftScore = 0;
@@ -103,22 +104,35 @@ public class WayPropertySet {
             P2<Integer> score = specifier.matchScores(way);
             int leftScore = score.first;
             int rightScore = score.second;
+
             if (picker.isSafetyMixin()) {
                 if (leftScore > 0) {
                     leftMixins.add(wayProperties);
+                    if (permissionCount != null) {
+                        permissionCount.addLeftMixins(picker);
+                    }
                 }
                 if (rightScore > 0) {
                     rightMixins.add(wayProperties);
+                    if (permissionCount != null) {
+                        permissionCount.addRightMixins(picker);
+                    }
                 }
             } else {
                 if (leftScore > bestLeftScore) {
 
                     leftResult = wayProperties;
                     bestLeftScore = leftScore;
+                    if (permissionCount != null) {
+                        permissionCount.addLeftSpecifier(picker, leftScore);
+                    }
                 }
                 if (rightScore > bestRightScore) {
                     rightResult = wayProperties;
                     bestRightScore = rightScore;
+                    if (permissionCount != null) {
+                        permissionCount.addRightSpecifier(picker, rightScore);
+                    }
                 }
             }
         }
@@ -138,6 +152,10 @@ public class WayPropertySet {
                 && (leftMixins.size() == 0 || rightMixins.size() == 0)) {
             String all_tags = dumpTags(way);
             LOG.debug("Used default permissions: " + all_tags);
+        }
+
+        if (permissionCount != null) {
+            permissionCount.addFinalSafetyFeatures(result.getSafetyFeatures());
         }
         return result;
     }

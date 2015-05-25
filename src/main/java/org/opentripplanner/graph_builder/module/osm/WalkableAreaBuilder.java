@@ -417,7 +417,7 @@ public class WalkableAreaBuilder {
             backStreet.setStreetClass(cls);
             edges.add(backStreet);
 
-            WayProperties wayData = wayPropertySet.getDataForWay(areaEntity);
+            WayProperties wayData = wayPropertySet.getDataForWay(areaEntity, null);
             __handler.applyWayProperties(street, backStreet, wayData, areaEntity);
 
         } else {
@@ -491,7 +491,7 @@ public class WalkableAreaBuilder {
             String name = __handler.getNameForWay(areaEntity, id);
             namedArea.setName(name);
 
-            WayProperties wayData = wayPropertySet.getDataForWay(areaEntity);
+            WayProperties wayData = wayPropertySet.getDataForWay(areaEntity, null);
             Double safety = wayData.getSafetyFeatures().first;
             namedArea.setBicycleSafetyMultiplier(safety);
 

@@ -241,6 +241,16 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
         private Multiset<OSMWayForPerm> usedWayPermissions;
 
+        private Map<OSMWayForPerm, String> waySpecifiers;
+
+        private SetMultimap<OSMWayForPerm, String> wayleftMixins;
+
+        private SetMultimap<OSMWayForPerm, String> wayrightMixins;
+
+        private SetMultimap<OSMWayForPerm, String> wayleftPicker;
+
+        private SetMultimap<OSMWayForPerm, String> wayrightPicker;
+
         private Map<OSMWayForPerm, P2<StreetTraversalPermission>> wayPermissionsMap;
 
         private SetMultimap<P2<StreetTraversalPermission>, OSMWayForPerm> permissionWayMap;
@@ -356,6 +366,72 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             } catch (IOException e) {
                 LOG.error("IO Exception creating permissonsWay file: {}", e);
             }
+
+            try {
+                CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "waySpecifiers.csv").getCanonicalPath(),
+                    ',', Charset.forName("UTF8"));
+                csvWriter.writeRecord(new String[]{"tags", "specifiers"});
+                for (Map.Entry<OSMWayForPerm, String> permEntry : waySpecifiers.entrySet()) {
+                    csvWriter.writeRecord(new String[] { permEntry.getKey().stripTagsToString(), permEntry.getValue() });
+                }
+                csvWriter.close();
+            } catch (IOException e) {
+                LOG.error("IO Exception creating waySpecifiers file: {}", e);
+            }
+
+
+            try {
+                CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "wayLeftPicker.csv").getCanonicalPath(),
+                    ',', Charset.forName("UTF8"));
+                csvWriter.writeRecord(new String[]{"tags", "leftPicker"});
+                for (Map.Entry<OSMWayForPerm, String> permEntry : wayleftPicker.entries()) {
+                    csvWriter.writeRecord(new String[] { permEntry.getKey().stripTagsToString(),
+                        permEntry.getValue() });
+                }
+                csvWriter.close();
+            } catch (IOException e) {
+                LOG.error("IO Exception creating wayLeftPicker file: {}", e);
+            }
+
+            try {
+                CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "wayRightPicker.csv").getCanonicalPath(),
+                    ',', Charset.forName("UTF8"));
+                csvWriter.writeRecord(new String[]{"tags", "rightPicker"});
+                for (Map.Entry<OSMWayForPerm, String> permEntry : wayrightPicker.entries()) {
+                    csvWriter.writeRecord(new String[] { permEntry.getKey().stripTagsToString(),
+                        permEntry.getValue() });
+                }
+                csvWriter.close();
+            } catch (IOException e) {
+                LOG.error("IO Exception creating wayRightPicker file: {}", e);
+            }
+
+            try {
+                CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "wayLeftMixin.csv").getCanonicalPath(),
+                    ',', Charset.forName("UTF8"));
+                csvWriter.writeRecord(new String[]{"tags", "leftMixin"});
+                for (Map.Entry<OSMWayForPerm, String> permEntry : wayleftMixins.entries()) {
+                    csvWriter.writeRecord(new String[] { permEntry.getKey().stripTagsToString(),
+                        permEntry.getValue() });
+                }
+                csvWriter.close();
+            } catch (IOException e) {
+                LOG.error("IO Exception creating wayLeftMixin file: {}", e);
+            }
+
+            try {
+                CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "wayRightMixin.csv").getCanonicalPath(),
+                    ',', Charset.forName("UTF8"));
+                csvWriter.writeRecord(new String[]{"tags", "rightMixin"});
+                for (Map.Entry<OSMWayForPerm, String> permEntry : wayrightMixins.entries()) {
+                    csvWriter.writeRecord(new String[] { permEntry.getKey().stripTagsToString(),
+                        permEntry.getValue() });
+                }
+                csvWriter.close();
+            } catch (IOException e) {
+                LOG.error("IO Exception creating wayRightMixin file: {}", e);
+            }
+
         }
 
         private void visualizeWayPermissions() {
@@ -363,6 +439,11 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             usedWayPermissions = HashMultiset.create();
             wayPermissionsMap = new HashMap<>();
             permissionWayMap = HashMultimap.create();
+            waySpecifiers = new HashMap<>();
+            wayleftMixins = HashMultimap.create();
+            wayrightMixins = HashMultimap.create();
+            wayleftPicker = HashMultimap.create();
+            wayrightPicker = HashMultimap.create();
             //Set<OSMTag> tagValues = new HashSet<OSMTag>(3*wayPropertySet.getWayProperties().size());
             List<OSMSpecifier> specifiers = new ArrayList<>(3*wayPropertySet.getWayProperties().size());
             try {
@@ -627,10 +708,31 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                     LOG.debug("ways=" + wayIndex + "/" + wayCount);
                 wayIndex++;
 
-                WayProperties wayData = wayPropertySet.getDataForWay(way);
+                OSMPermissionCount osmPermissionCount = null;
+                if (calculateWayPermissions) {
+                    osmPermissionCount = new OSMPermissionCount();
+                }
+
+                WayProperties wayData = wayPropertySet.getDataForWay(way, osmPermissionCount);
                 OSMWayForPerm osmWayForPerm = new OSMWayForPerm(way);
                 if (calculateWayPermissions) {
                     usedWayPermissions.add(osmWayForPerm);
+                    waySpecifiers.put(osmWayForPerm, osmPermissionCount.toString());
+                    if (osmPermissionCount.hasLeftMixins()) {
+                        wayleftMixins.putAll(osmWayForPerm, osmPermissionCount.getLeftMixins());
+                    }
+
+                    if (osmPermissionCount.hasRightMixins()) {
+                        wayrightMixins.putAll(osmWayForPerm, osmPermissionCount.getRightMixins());
+                    }
+
+                    if (osmPermissionCount.getLeftPicker() != null) {
+                        wayleftPicker.put(osmWayForPerm, osmPermissionCount.getLeftPicker());
+                    }
+
+                    if (osmPermissionCount.getRightPicker() != null) {
+                        wayrightPicker.put(osmWayForPerm, osmPermissionCount.getRightPicker());
+                    }
                 }
 
                 setWayName(way);

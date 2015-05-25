@@ -278,7 +278,7 @@ public class OSMWayTest {
 
     private P2<StreetTraversalPermission> getWayProperties(OSMWay way) {
         WayPropertySet wayPropertySet = new WayPropertySet();
-        WayProperties wayData = wayPropertySet.getDataForWay(way);
+        WayProperties wayData = wayPropertySet.getDataForWay(way, null);
 
         StreetTraversalPermission permissions = OSMFilter.getPermissionsForWay(way,
                 wayData.getPermission(), null);

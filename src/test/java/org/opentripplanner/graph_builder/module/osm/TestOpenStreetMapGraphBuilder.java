@@ -163,7 +163,7 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         WayPropertySet wayPropertySet = new WayPropertySet();
 
         // where there are no way specifiers, the default is used
-        assertEquals(wayPropertySet.getDataForWay(way), wayPropertySet.defaultProperties);
+        assertEquals(wayPropertySet.getDataForWay(way, null), wayPropertySet.defaultProperties);
 
         // add two equal matches: lane only...
         OSMSpecifier lane_only = new OSMSpecifier();
@@ -183,7 +183,7 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
 
         wayPropertySet.addProperties(footway_only, footways_allow_peds);
 
-        WayProperties dataForWay = wayPropertySet.getDataForWay(way);
+        WayProperties dataForWay = wayPropertySet.getDataForWay(way, null);
         // the first one is found
         assertEquals(dataForWay, lane_is_safer);
 
@@ -197,7 +197,7 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         safer_and_peds.setPermission(StreetTraversalPermission.PEDESTRIAN);
 
         wayPropertySet.addProperties(lane_and_footway, safer_and_peds);
-        dataForWay = wayPropertySet.getDataForWay(way);
+        dataForWay = wayPropertySet.getDataForWay(way, null);
         assertEquals(dataForWay, safer_and_peds);
 
         // add a mixin
@@ -206,7 +206,7 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         gravel_is_dangerous.setSafetyFeatures(new P2<Double>(2.0, 2.0));
         wayPropertySet.addProperties(gravel, gravel_is_dangerous, true);
 
-        dataForWay = wayPropertySet.getDataForWay(way);
+        dataForWay = wayPropertySet.getDataForWay(way, null);
         assertEquals(dataForWay.getSafetyFeatures().first, 1.5);
 
         // test a left-right distinction
@@ -220,7 +220,7 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         track_is_safest.setSafetyFeatures(new P2<Double>(0.25, 0.25));
 
         wayPropertySet.addProperties(track_only, track_is_safest);
-        dataForWay = wayPropertySet.getDataForWay(way);
+        dataForWay = wayPropertySet.getDataForWay(way, null);
         assertEquals(0.25, dataForWay.getSafetyFeatures().first); // right (with traffic) comes
                                                                        // from track
         assertEquals(0.75, dataForWay.getSafetyFeatures().second); // left comes from lane
