@@ -715,25 +715,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
                 WayProperties wayData = wayPropertySet.getDataForWay(way, osmPermissionCount);
                 OSMWayForPerm osmWayForPerm = new OSMWayForPerm(way);
-                if (calculateWayPermissions) {
-                    usedWayPermissions.add(osmWayForPerm);
-                    waySpecifiers.put(osmWayForPerm, osmPermissionCount.toString());
-                    if (osmPermissionCount.hasLeftMixins()) {
-                        wayleftMixins.putAll(osmWayForPerm, osmPermissionCount.getLeftMixins());
-                    }
 
-                    if (osmPermissionCount.hasRightMixins()) {
-                        wayrightMixins.putAll(osmWayForPerm, osmPermissionCount.getRightMixins());
-                    }
-
-                    if (osmPermissionCount.getLeftPicker() != null) {
-                        wayleftPicker.put(osmWayForPerm, osmPermissionCount.getLeftPicker());
-                    }
-
-                    if (osmPermissionCount.getRightPicker() != null) {
-                        wayrightPicker.put(osmWayForPerm, osmPermissionCount.getRightPicker());
-                    }
-                }
 
                 setWayName(way);
 
@@ -772,6 +754,27 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                     lastLevel = level;
                 }
 
+                //moved after way geometry is read since. node could be missing from data (look line 737)
+                //and for missing date way is skipped
+                if (calculateWayPermissions) {
+                    usedWayPermissions.add(osmWayForPerm);
+                    waySpecifiers.put(osmWayForPerm, osmPermissionCount.toString());
+                    if (osmPermissionCount.hasLeftMixins()) {
+                        wayleftMixins.putAll(osmWayForPerm, osmPermissionCount.getLeftMixins());
+                    }
+
+                    if (osmPermissionCount.hasRightMixins()) {
+                        wayrightMixins.putAll(osmWayForPerm, osmPermissionCount.getRightMixins());
+                    }
+
+                    if (osmPermissionCount.getLeftPicker() != null) {
+                        wayleftPicker.put(osmWayForPerm, osmPermissionCount.getLeftPicker());
+                    }
+
+                    if (osmPermissionCount.getRightPicker() != null) {
+                        wayrightPicker.put(osmWayForPerm, osmPermissionCount.getRightPicker());
+                    }
+                }
                 IntersectionVertex startEndpoint = null, endEndpoint = null;
 
                 ArrayList<Coordinate> segmentCoordinates = new ArrayList<Coordinate>();
