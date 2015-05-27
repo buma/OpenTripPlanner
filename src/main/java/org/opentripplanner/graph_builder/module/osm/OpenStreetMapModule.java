@@ -247,9 +247,9 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
         private SetMultimap<OSMWayForPerm, String> wayrightMixins;
 
-        private SetMultimap<OSMWayForPerm, String> wayleftPicker;
+        private Map<OSMWayForPerm, String> wayleftPicker;
 
-        private SetMultimap<OSMWayForPerm, String> wayrightPicker;
+        private Map<OSMWayForPerm, String> wayrightPicker;
 
         private Map<OSMWayForPerm, P2<StreetTraversalPermission>> wayPermissionsMap;
 
@@ -384,7 +384,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                 CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "wayLeftPicker.csv").getCanonicalPath(),
                     ',', Charset.forName("UTF8"));
                 csvWriter.writeRecord(new String[]{"tags", "leftPicker"});
-                for (Map.Entry<OSMWayForPerm, String> permEntry : wayleftPicker.entries()) {
+                for (Map.Entry<OSMWayForPerm, String> permEntry : wayleftPicker.entrySet()) {
                     csvWriter.writeRecord(new String[] { permEntry.getKey().stripTagsToString(),
                         permEntry.getValue() });
                 }
@@ -397,7 +397,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                 CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "wayRightPicker.csv").getCanonicalPath(),
                     ',', Charset.forName("UTF8"));
                 csvWriter.writeRecord(new String[]{"tags", "rightPicker"});
-                for (Map.Entry<OSMWayForPerm, String> permEntry : wayrightPicker.entries()) {
+                for (Map.Entry<OSMWayForPerm, String> permEntry : wayrightPicker.entrySet()) {
                     csvWriter.writeRecord(new String[] { permEntry.getKey().stripTagsToString(),
                         permEntry.getValue() });
                 }
@@ -442,8 +442,8 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             waySpecifiers = new HashMap<>();
             wayleftMixins = HashMultimap.create();
             wayrightMixins = HashMultimap.create();
-            wayleftPicker = HashMultimap.create();
-            wayrightPicker = HashMultimap.create();
+            wayleftPicker = new HashMap<>();
+            wayrightPicker = new HashMap<>();
             //Set<OSMTag> tagValues = new HashSet<OSMTag>(3*wayPropertySet.getWayProperties().size());
             List<OSMSpecifier> specifiers = new ArrayList<>(3*wayPropertySet.getWayProperties().size());
             try {
