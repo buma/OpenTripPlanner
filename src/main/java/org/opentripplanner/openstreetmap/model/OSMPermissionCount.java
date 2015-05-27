@@ -52,7 +52,10 @@ public class OSMPermissionCount {
         if (picker == null) {
             return null;
         }
-        return picker.getSpecifier().toString() + "[" + picker.getProperties().getPermission() + "," + picker.getProperties().getSafetyFeatures() + "]";
+        //return picker.getSpecifier().toString() + "[" + picker.getProperties().getPermission() + "," + picker.getProperties().getSafetyFeatures() + "]";
+        return String.format(Locale.US, "%s[%s,P2(%.2f, %.2f)]", picker.getSpecifier(),
+            picker.getProperties().getPermission(), picker.getProperties().getSafetyFeatures().first,
+            picker.getProperties().getSafetyFeatures().second);
     }
 
     public List<String> getLeftMixins() {
