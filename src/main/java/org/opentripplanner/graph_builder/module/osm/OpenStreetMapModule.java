@@ -345,11 +345,25 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             try {
                 CsvWriter csvWriter = new CsvWriter(new File(permissionsOutputDir, "wayPermissions.csv").getCanonicalPath(),
                     ',', Charset.forName("UTF8"));
+                CsvWriter csvWriterAll = new CsvWriter(new File(permissionsOutputDir, "wayPermissionsPickers.csv").getCanonicalPath(),
+                    ',', Charset.forName("UTF8"));
+                csvWriterAll.writeRecord(new String[]{"tags", "leftPicker", "rightPicker", "permissions"});
                 csvWriter.writeRecord(new String[]{"tags", "permissions"});
                 for (Map.Entry<OSMWayForPerm, P2<StreetTraversalPermission>> wayPermission : wayPermissionsMap.entrySet()) {
-                    csvWriter.writeRecord(new String[]{wayPermission.getKey().stripTagsToString(), wayPermission.getValue().toString()});
+                    String[] writerRecord = new String[]{wayPermission.getKey().stripTagsToString(), wayPermission.getValue().toString()};
+                    csvWriter.writeRecord(writerRecord);
+
+                    String leftPicker = wayleftPicker.get(wayPermission.getKey());
+                    String rightPicker = wayrightPicker.get(wayPermission.getKey());
+
+                    if (leftPicker != null && rightPicker != null) {
+                        csvWriterAll.writeRecord(new String[]{writerRecord[0], leftPicker, rightPicker, writerRecord[1]});
+                    } else {
+                        LOG.warn("No picker {}|{} found for: {}", leftPicker, rightPicker, writerRecord[0]);
+                    }
                 }
                 csvWriter.close();
+                csvWriterAll.close();
             } catch (IOException e) {
                 LOG.error("IO Exception creating wayPermissons file: {}", e);
             }
