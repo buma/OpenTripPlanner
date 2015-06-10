@@ -29,7 +29,7 @@ otp.config = {
         var active_locales = _.values(otp.config.locales);
         var str = "<ul>";
         var localesLength = active_locales.length;
-        var param_name = i18n.options.detectLngQS;
+        var param_name = "setLng";
         for (var i = 0; i < localesLength; i++) {
             var current_locale = active_locales[i];
             var url_param = {};
@@ -210,19 +210,60 @@ var options = {
 	getAsync: false, //TODO: make async
 	fallbackOnEmpty: true,
 };
+
+//Copies default options to current options
+for (prop in options) {
+    if (options.hasOwnProperty(prop)) {
+        o[prop] = options[prop];
+    }
+}
+
+options = o;
+
+
 var _tr = null; //key
 var ngettext = null; // singular, plural, value
 var pgettext = null; // context, key
 var npgettext = null; // context, singular, plural, value
+var lang = null;
+var info = null;
 
-i18n.addPostProcessor('add_nekaj', function(val, key, opts) {
-    return "|"+val+"|";
-});
 
-i18n.init(options, function(t) {
+    lang = detectLanguage();
+    console.log("LANG:" + lang);
+    console.timeStamp("detected");
+    /*o.resGethPath = "trans/__lng__.json";*/
+    var url = options.resGetPath.replace("__lng__", lang);
+    console.log("URL:", url);
+    var locale_data = $.ajax({
+        dataType: "json",
+        url:url,
+        async: false});
+    locale_data.then(function(data) {
+        console.timeStamp("Found locale translation");
+        console.log("Found locale data");
+        console.log(data);
+        //sleep(1000);
+        console.log("Resolving");
+        info = new Jed(data);
+        if (o.useCookie && _cookie.read(o.cookieName) !== lang){ //cookie is unset or invalid
+            _cookie.create(o.cookieName, lang, o.cookieExpirationTime, o.cookieDomain);
+        }
+    }, function(err) {
+        console.error(err);
+        info = new Jed({});
+        lang = "en";
+        console.error("No locale found!");
+        _cookie.remove(o.cookieName);
+        /*reject(new Error(err))*/
+    });
+
+
+    console.log("Resolved");
+    console.timeStamp("Resolved");
     //Sets locale and metric based on currently selected/detected language
-    if (i18n.lng() in otp.config.locales) {
-        otp.config.locale = otp.config.locales[i18n.lng()];
+    if (lang in otp.config.locales) {
+        otp.config.locale = otp.config.locales[lang];
         otp.config.metric = otp.config.locale.config.metric;
         //Conditionally load datepicker-lang.js?
     } 
@@ -250,7 +291,7 @@ i18n.init(options, function(t) {
         //Only key
         if (arg_length == 1) {
             key = arguments[0];
-            return t(key); 
+            return info.gettext(key); 
         //key with sprintf values
         } else if (arg_length > 1) {
             key = arguments[0];
@@ -258,26 +299,22 @@ i18n.init(options, function(t) {
             for(var i = 1; i < arg_length; i++) {
                 values.push(arguments[i]);
             }
-            return t(key, {postProcess: 'sprintf', sprintf: values}); 
+            return Jed.sprintf(info.gettext(key), values); 
         } else {
             console.error("_tr function doesn't have an argument");
             return "";
         }
     };
     ngettext = function(singular, plural, value) {
-        return t(singular, {count: value, postProcess: 'sprintf', sprintf: [value]});
+        return Jed.sprintf(info.ngettext(singular, plural, value), value);
     };
     pgettext = function(context, key) {
-        return t(key, {context: context});
-    };
+        return info.pgettext(context, key);
+    }
     npgettext = function(context, singular, plural, value) {
-        return t(singular, {context: context,
-                 count: value,
-                 postProcess: 'sprintf',
-                 sprintf: [value]});
+        return Jed.sprintf(info.npgettext(context, singular, plural, value), value);
     };
 
-});
 
 otp.config.modes = {
     //TRANSLATORS: Travel by: mode of transport (Used in selection in Travel

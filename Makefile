@@ -1,5 +1,5 @@
 PYBABEL=.venv/bin/pybabel
-I18NEXT=./node_modules/.bin/i18next-conv
+PO2JSON=./node_modules/.bin/po2json
 LOCALE_FOLDER=./src/client/i18n
 BABEL_CFG=$(LOCALE_FOLDER)/babel.cfg
 TEMPLATE_FILE=$(LOCALE_FOLDER)/messages.pot
@@ -29,7 +29,7 @@ $(LOCALE_FILES): $(TEMPLATE_FILE)
 #Updates js files from new translations in po files
 .PHONY: update_js
 update_js: $(LOCALE_FILES)
-	for LAN in $(LANGS); do $(I18NEXT) -l "$$LAN" -s "$(LOCALE_FOLDER)/$$LAN.po" -t "$(JS_FILESPATH)/locale/$$LAN.json"; done
+	for LAN in $(LANGS); do $(PO2JSON) "$(LOCALE_FOLDER)/$$LAN.po" "$(JS_FILESPATH)/locale/$$LAN.json" --fuzzy -f jed1.x; done
 	touch update_js
 
 #Creates new translation with LAN culture info
