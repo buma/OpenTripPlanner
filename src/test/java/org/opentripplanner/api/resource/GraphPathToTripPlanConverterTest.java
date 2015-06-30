@@ -31,15 +31,15 @@ import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
-import org.opentripplanner.api.model.AbsoluteDirection;
-import org.opentripplanner.api.model.Itinerary;
-import org.opentripplanner.api.model.Leg;
-import org.opentripplanner.api.model.Place;
-import org.opentripplanner.api.model.RelativeDirection;
-import org.opentripplanner.api.model.WalkStep;
+import org.opentripplanner.api.model.*;
 import org.opentripplanner.common.geometry.PackedCoordinateSequence;
+import org.opentripplanner.common.model.GenericLocation;
+import org.opentripplanner.graph_builder.module.PruneFloatingIslands;
+import org.opentripplanner.graph_builder.module.osm.DefaultWayPropertySetSource;
+import org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule;
 import org.opentripplanner.gtfs.BikeAccess;
 import org.opentripplanner.model.StopPattern;
+import org.opentripplanner.openstreetmap.impl.AnyFileBasedOpenStreetMapProviderImpl;
 import org.opentripplanner.routing.alertpatch.Alert;
 import org.opentripplanner.routing.alertpatch.AlertPatch;
 import org.opentripplanner.routing.alertpatch.TimePeriod;
@@ -75,8 +75,12 @@ import org.opentripplanner.routing.edgetype.TimetableSnapshot;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.impl.GraphPathFinder;
+import org.opentripplanner.routing.impl.MemoryGraphSource;
+import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl;
 import org.opentripplanner.routing.location.StreetLocation;
 import org.opentripplanner.routing.services.FareService;
+import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.notes.StreetNotesService;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.trippattern.Deduplicator;
@@ -90,17 +94,15 @@ import org.opentripplanner.routing.vertextype.PatternDepartVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.routing.vertextype.TransitStopArrive;
 import org.opentripplanner.routing.vertextype.TransitStopDepart;
+import org.opentripplanner.standalone.CommandLineParameters;
+import org.opentripplanner.standalone.OTPServer;
+import org.opentripplanner.standalone.Router;
 import org.opentripplanner.updater.stoptime.TimetableSnapshotSource;
 import org.opentripplanner.util.NonLocalizedString;
 import org.opentripplanner.util.model.EncodedPolylineBean;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.SimpleTimeZone;
-import java.util.TimeZone;
+import java.io.File;
+import java.util.*;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
@@ -123,6 +125,89 @@ public class GraphPathToTripPlanConverterTest {
             "Mine is the last voice that you will ever hear. Do not be alarmed.";
 
     private static final Locale locale = new Locale("en");
+
+    private Router loadGraph(String osm_filename) {
+        Graph gg = new Graph();
+        HashMap<Class<?>, Object> extra = new HashMap<>();
+
+        OpenStreetMapModule loader = new OpenStreetMapModule();
+        //names streets based on osm ids (osm:way:osmid)
+        loader.setDefaultWayPropertySetSource(new DefaultWayPropertySetSource());
+        AnyFileBasedOpenStreetMapProviderImpl provider = new AnyFileBasedOpenStreetMapProviderImpl();
+        loader.skipVisibility = true;
+
+        PruneFloatingIslands pfi = new PruneFloatingIslands();
+
+        File file = new File(getClass().getResource(osm_filename).getFile());
+
+        provider.setPath(file);
+        loader.setProvider(provider);
+        loader.buildGraph(gg, extra);
+
+        new StreetVertexIndexServiceImpl(gg);
+
+        OTPServer otpServer = new OTPServer(new CommandLineParameters(), new GraphService());
+        otpServer.getGraphService().registerGraph("A", new MemoryGraphSource("A", gg));
+
+        Router router = otpServer.getGraphService().getRouter("A");
+
+        return router;
+    }
+
+    @Test
+    public void testRoundabout() {
+        Router router = loadGraph("roundabout.osm");
+        RoutingRequest request = new RoutingRequest("CAR");
+
+        //From bottom to the right
+        request.setRoutingContext(router.graph, "osm:node:1140961563", "osm:node:870595450");
+
+        GraphPathFinder gpFinder = new GraphPathFinder(router); // we could also get a persistent router-scoped GraphPathFinder but there's no setup cost here
+        List<GraphPath> paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        /* Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response. */
+        TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        System.err.print(plan);
+
+        comparePlan(plan, "1");
+
+
+        //From bottom over roundabout
+        request = new RoutingRequest("CAR");
+        request.setRoutingContext(router.graph, "osm:node:1140961563", "osm:node:874748689");
+
+        paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        //Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response.
+        plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        comparePlan(plan, "2");
+
+        //From bottom to the left
+        request = new RoutingRequest("CAR");
+        request.setRoutingContext(router.graph, "osm:node:1140961563", "osm:node:874811142");
+
+        paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        //Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response.
+        plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        comparePlan(plan, "3");
+
+    }
+
+    private void comparePlan(TripPlan plan, String exit) {
+        assertFalse(plan.itinerary.isEmpty());
+        Itinerary result = plan.itinerary.get(0);
+        assertFalse(result.legs.isEmpty());
+        Leg myLeg = result.legs.get(0);
+        List<WalkStep> steps = myLeg.walkSteps;
+        assertFalse(steps.isEmpty());
+        WalkStep roundaboutStep = steps.get(1);
+        assertEquals(RelativeDirection.CIRCLE_COUNTERCLOCKWISE, roundaboutStep.relativeDirection);
+        assertEquals(exit, roundaboutStep.exit);
+    }
 
     /**
      * Test the generateItinerary() method. This test is intended to be comprehensive but fast.
