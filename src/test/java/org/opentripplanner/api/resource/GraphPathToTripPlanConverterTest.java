@@ -160,6 +160,86 @@ public class GraphPathToTripPlanConverterTest {
     }
 
     @Test
+    public void testRoundabout5() {
+
+        Router router = loadGraph("5roundabout.osm");
+        RoutingRequest request = new RoutingRequest("CAR");
+
+        //From Headford road to the left (1st exit)
+        request.setRoutingContext(router.graph, "osm:node:1873204539", "osm:node:1109773255");
+
+        GraphPathFinder gpFinder = new GraphPathFinder(router); // we could also get a persistent router-scoped GraphPathFinder but there's no setup cost here
+        List<GraphPath> paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        LOG.info("Should be 1");
+        /* Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response. */
+        TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+
+
+        assertNotNull(plan);
+        comparePlan(plan, "1", RelativeDirection.CIRCLE_CLOCKWISE);
+
+        request = new RoutingRequest("CAR");
+
+        //From headford road to Headford road (Bottom to top)
+        request.setRoutingContext(router.graph, "osm:node:1873204539", "osm:node:1641423027");
+
+        paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        LOG.info("Should be 2");
+
+        //Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response.
+        plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        comparePlan(plan, "2", RelativeDirection.CIRCLE_CLOCKWISE);
+
+
+        request = new RoutingRequest("CAR");
+
+        //From headford road to Bothar Na dTreabh road (Bottom to Right)
+        request.setRoutingContext(router.graph, "osm:node:1873204539", "osm:node:245226938");
+
+        paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        LOG.info("Should be 3");
+
+        //Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response.
+        plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        comparePlan(plan, "3", RelativeDirection.CIRCLE_CLOCKWISE);
+
+
+
+        request = new RoutingRequest("CAR");
+
+        //From Headford road to the last exit
+        request.setRoutingContext(router.graph, "osm:node:1873204539", "osm:node:1518713515");
+
+        paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        LOG.info("Should be 4");
+
+        //Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response.
+        plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        comparePlan(plan, "4", RelativeDirection.CIRCLE_CLOCKWISE);
+
+        request = new RoutingRequest("CAR");
+
+        //From Headford road to the Headform road again (full circle)
+        request.setRoutingContext(router.graph, "osm:node:1873204539", "osm:node:367105612");
+
+        paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        LOG.info("Should be 5");
+
+        //Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response.
+        plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        comparePlan(plan, "5", RelativeDirection.CIRCLE_CLOCKWISE);
+    }
+    @Test
     public void testRoundabout() {
         Router router = loadGraph("roundabout.osm");
         RoutingRequest request = new RoutingRequest("CAR");
