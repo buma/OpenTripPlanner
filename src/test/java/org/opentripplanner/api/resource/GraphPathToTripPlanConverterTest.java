@@ -100,6 +100,8 @@ import org.opentripplanner.standalone.Router;
 import org.opentripplanner.updater.stoptime.TimetableSnapshotSource;
 import org.opentripplanner.util.NonLocalizedString;
 import org.opentripplanner.util.model.EncodedPolylineBean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.*;
@@ -125,6 +127,9 @@ public class GraphPathToTripPlanConverterTest {
             "Mine is the last voice that you will ever hear. Do not be alarmed.";
 
     private static final Locale locale = new Locale("en");
+
+    private static final Logger LOG = LoggerFactory
+        .getLogger(GraphPathToTripPlanConverterTest.class);
 
     private Router loadGraph(String osm_filename) {
         Graph gg = new Graph();
@@ -165,12 +170,14 @@ public class GraphPathToTripPlanConverterTest {
         GraphPathFinder gpFinder = new GraphPathFinder(router); // we could also get a persistent router-scoped GraphPathFinder but there's no setup cost here
         List<GraphPath> paths = gpFinder.graphPathFinderEntryPoint(request);
 
+        LOG.info("Should be 1");
         /* Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response. */
         TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
 
         System.err.print(plan);
 
-        comparePlan(plan, "1");
+
+        comparePlan(plan, "1", RelativeDirection.CIRCLE_COUNTERCLOCKWISE);
 
 
         //From bottom over roundabout
@@ -179,10 +186,11 @@ public class GraphPathToTripPlanConverterTest {
 
         paths = gpFinder.graphPathFinderEntryPoint(request);
 
+        LOG.info("Should be 2");
         //Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response.
         plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
 
-        comparePlan(plan, "2");
+        comparePlan(plan, "2", RelativeDirection.CIRCLE_COUNTERCLOCKWISE);
 
         //From bottom to the left
         request = new RoutingRequest("CAR");
@@ -190,23 +198,41 @@ public class GraphPathToTripPlanConverterTest {
 
         paths = gpFinder.graphPathFinderEntryPoint(request);
 
+        LOG.info("Should be 3");
         //Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response.
         plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
 
-        comparePlan(plan, "3");
+
+        comparePlan(plan, "3", RelativeDirection.CIRCLE_COUNTERCLOCKWISE);
 
     }
 
-    private void comparePlan(TripPlan plan, String exit) {
+    /**
+     * Checks if exit number is correct in a roundabout
+     *
+     * It assumes roundabout is in first leg of first itinerary.
+     *
+     * It finds first Step with given relative direction and checks if exit number is same as given
+     * @param plan
+     * @param exit
+     * @param relativeDirection1
+     */
+    private void comparePlan(TripPlan plan, String exit, RelativeDirection relativeDirection) {
         assertFalse(plan.itinerary.isEmpty());
         Itinerary result = plan.itinerary.get(0);
         assertFalse(result.legs.isEmpty());
         Leg myLeg = result.legs.get(0);
         List<WalkStep> steps = myLeg.walkSteps;
         assertFalse(steps.isEmpty());
-        WalkStep roundaboutStep = steps.get(1);
-        assertEquals(RelativeDirection.CIRCLE_COUNTERCLOCKWISE, roundaboutStep.relativeDirection);
-        assertEquals(exit, roundaboutStep.exit);
+
+        Optional<WalkStep> roundaboutStep = steps.stream().filter(s -> s.relativeDirection == relativeDirection).findFirst();
+        if (roundaboutStep.isPresent()) {
+            assertEquals(exit, roundaboutStep.get().exit);
+            LOG.info("ROUND: {} ({})", roundaboutStep.get().toString(), roundaboutStep.get().exit);
+        } else {
+            LOG.error("STEPS: {}", steps);
+            assertTrue("No roundabout " + relativeDirection + " in steps!", false);
+        }
     }
 
     /**
