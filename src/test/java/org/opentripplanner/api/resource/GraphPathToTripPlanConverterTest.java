@@ -160,8 +160,61 @@ public class GraphPathToTripPlanConverterTest {
     }
 
     @Test
+    public void testRoundaboutClockwise() {
+
+        Router router = loadGraph("roundabout_clockwise.osm");
+        RoutingRequest request = new RoutingRequest("CAR");
+
+        //From Bottom road to the left (1st exit)
+        request.setRoutingContext(router.graph, "osm:node:446420762", "osm:node:1929653926");
+
+        GraphPathFinder gpFinder = new GraphPathFinder(router); // we could also get a persistent router-scoped GraphPathFinder but there's no setup cost here
+        List<GraphPath> paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        LOG.info("Should be 1");
+        /* Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response. */
+        TripPlan plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        assertNotNull(plan);
+        comparePlan(plan, "1", RelativeDirection.CIRCLE_CLOCKWISE);
+
+
+        request = new RoutingRequest("CAR");
+
+        //From Bottom road to the left (1st exit)
+        request.setRoutingContext(router.graph, "osm:node:446420762", "osm:node:379924650");
+
+        gpFinder = new GraphPathFinder(router); // we could also get a persistent router-scoped GraphPathFinder but there's no setup cost here
+        paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        //Doesn't work
+        LOG.info("Should be 2");
+        /* Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response. */
+        plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        assertNotNull(plan);
+        comparePlan(plan, "2", RelativeDirection.CIRCLE_CLOCKWISE);
+
+        request = new RoutingRequest("CAR");
+
+        //From Bottom road to the left (1st exit)
+        request.setRoutingContext(router.graph, "osm:node:446420762", "osm:node:283270266");
+
+        gpFinder = new GraphPathFinder(router); // we could also get a persistent router-scoped GraphPathFinder but there's no setup cost here
+        paths = gpFinder.graphPathFinderEntryPoint(request);
+
+        //Doesn't work
+        LOG.info("Should be 3");
+        /* Convert the internal GraphPaths to a TripPlan object that is included in an OTP web service Response. */
+        plan = GraphPathToTripPlanConverter.generatePlan(paths, request);
+
+        assertNotNull(plan);
+        comparePlan(plan, "3", RelativeDirection.CIRCLE_CLOCKWISE);
+    }
+    @Test
     public void testRoundabout5() {
 
+        //All work
         Router router = loadGraph("5roundabout.osm");
         RoutingRequest request = new RoutingRequest("CAR");
 
