@@ -854,7 +854,12 @@ public class ShowGraph extends PApplet implements MouseWheelListener {
 		    strokeWeight(1);
 		    noFill();
 		    while (drawOffset < visibleStreetEdges.size()) {
-		        drawEdge(visibleStreetEdges.get(drawOffset));
+		        Edge e = visibleStreetEdges.get(drawOffset);
+		        if (e instanceof StreetEdge && ((StreetEdge) e).isWayTrafficLight()) {
+		            stroke(120, 60, 60); // dark red
+		        }
+		        drawEdge(e);
+		        stroke(30, 128, 30); // dark green
 		        drawOffset += 1;
 		        if (drawOffset % BLOCK_SIZE == 0) {
 		            if (millis() - startMillis > FRAME_TIME)
