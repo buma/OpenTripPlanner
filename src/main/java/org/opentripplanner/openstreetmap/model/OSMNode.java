@@ -54,6 +54,35 @@ public class OSMNode extends OSMWithTags {
     }
 
     /**
+     * Gets direction of traffic lights set on a node
+     *
+     * This is used with tag all incoming ways type of tagging. Usually traffic lights are tagged on
+     * incoming (to the intersection) oneway ways. Or on dual way ways with direction tags.
+     *
+     * This can be forward or backward. If it is empty or direction is missing. Direction "both" is assumed.
+     *
+     * @return {@link OSMTrafficLightDirection} with traffic signals direction
+     * @throws Exception if direction is not forward/backward
+     */
+    public OSMTrafficLightDirection getTrafficLightDirection() throws Exception {
+        if (!hasTag("traffic_signals:direction")) {
+            return OSMTrafficLightDirection.BOTH;
+        }
+        final String traffic_signals_direction = getTag("traffic_signals:direction");
+        if (traffic_signals_direction.trim().isEmpty()) {
+            return OSMTrafficLightDirection.BOTH;
+        }
+        switch (traffic_signals_direction) {
+        case "forward":
+            return OSMTrafficLightDirection.FORWARD;
+        case "backward":
+            return OSMTrafficLightDirection.BACKWARD;
+        default:
+            throw new Exception("Strange traffic_signals:direction value: \"" + traffic_signals_direction + "\" ignoring node.");
+        }
+    }
+
+    /**
      * Is this a public transport stop that can be linked to a transit stop vertex later on.
      *
      * @return whether the node is a transit stop

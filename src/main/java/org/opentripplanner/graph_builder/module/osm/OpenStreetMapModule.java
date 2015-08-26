@@ -32,10 +32,7 @@ import org.opentripplanner.graph_builder.services.DefaultStreetEdgeFactory;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
 import org.opentripplanner.graph_builder.services.StreetEdgeFactory;
 import org.opentripplanner.graph_builder.services.osm.CustomNamer;
-import org.opentripplanner.openstreetmap.model.OSMLevel;
-import org.opentripplanner.openstreetmap.model.OSMNode;
-import org.opentripplanner.openstreetmap.model.OSMWay;
-import org.opentripplanner.openstreetmap.model.OSMWithTags;
+import org.opentripplanner.openstreetmap.model.*;
 import org.opentripplanner.openstreetmap.services.OpenStreetMapProvider;
 import org.opentripplanner.routing.alertpatch.Alert;
 import org.opentripplanner.routing.bike_park.BikePark;
@@ -592,7 +589,50 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                 Long startNode = null;
                 // where the current edge should start
                 OSMNode osmStartNode = null;
+                Boolean reportTrafficSignal = false;
+                OSMTrafficLightDirection trafficLightDirection = OSMTrafficLightDirection.NONE;
+                //LOOP over all the nodes in way to see if any node which is not an intersection has traffic lights
+                //This needs to be done at whole way at once. Since otherwise part of a way can be without traffic light info
+                //since traffic light node happened after intersection and Street edge was made from part of way before traffi light.
+                //TODO: This should be probably made before when way is read from PBF.
+                for (int i = 0; i < nodes.size() - 1; i++) {
+                    Long endNode = nodes.get(i + 1);
+                    // where the current edge might end
+                    OSMNode osmEndNode = osmdb.getNode(endNode);
 
+                    if (intersectionNodes.containsKey(endNode) || i == nodes.size() - 2 || nodes
+                        .subList(0, i).contains(nodes.get(i)) || osmEndNode.hasTag("ele")
+                        || osmEndNode.isStop()) {
+
+                    } else {
+                        if (osmEndNode.hasTrafficLight()) {
+                            if (reportTrafficSignal) {
+                                LOG.error(
+                                    "This is second traffic light node on same way: {}. Only one is supported.",
+                                    way);
+                            } else {
+                                try {
+                                    trafficLightDirection = osmEndNode.getTrafficLightDirection();
+                                    LOG.info("Found traffic light in node:{} on way:{}", osmEndNode,
+                                        way);
+                                    reportTrafficSignal = true;
+                                    if (trafficLightDirection == OSMTrafficLightDirection.FORWARD) {
+                                        way.addTag("forward_traffic_signals", "true");
+                                    } else if (trafficLightDirection == OSMTrafficLightDirection.BACKWARD) {
+                                        way.addTag("backward_traffic_signals", "true");
+                                    } else if (trafficLightDirection == OSMTrafficLightDirection.BOTH) {
+                                        way.addTag("backward_traffic_signals", "true");
+                                        way.addTag("forward_traffic_signals", "true");
+                                    }
+                                } catch (Exception e) {
+                                    LOG.error(e.getMessage() + " in node:{} on way:{}", osmEndNode,
+                                        way);
+                                }
+                            }
+                        }
+                    }
+                }
+                //END Traffic light LOOP
                 for (int i = 0; i < nodes.size() - 1; i++) {
                     OSMNode segmentStartOSMNode = osmdb.getNode(nodes.get(i));
                     if (segmentStartOSMNode == null) {
@@ -689,6 +729,10 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                         graph.streetNotesService.addStaticNote(street, note.first, note.second);
                 }
                 street.setNoThruTraffic(noThruTraffic);
+
+                if (way.hasTag("forward_traffic_signals")) {
+                    street.setWayTrafficLight(true, way.getId());
+                }
             }
 
             if (backStreet != null) {
@@ -702,6 +746,10 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                         graph.streetNotesService.addStaticNote(backStreet, note.first, note.second);
                 }
                 backStreet.setNoThruTraffic(noThruTraffic);
+
+                if (way.hasTag("backward_traffic_signals")) {
+                    backStreet.setWayTrafficLight(true, way.getId());
+                }
             }
         }
 

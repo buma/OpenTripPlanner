@@ -125,6 +125,14 @@ public class StreetEdge extends Edge implements Cloneable {
     /** The angle at the start of the edge geometry. Internal representation like that of inAngle. */
     private byte outAngle;
 
+    /** This is for traffic lights that are tagged on way nodes instead of intersections */
+    private boolean wayTrafficLight = false;
+    //TODO: move to flags?
+
+    /** OSM ID of a way from which traffic light is used in this street.
+     *  It is used to differentiate between two traffic lights that can appear in two ways one after another */
+    private long trafficLightId = 0;
+
     public StreetEdge(StreetVertex v1, StreetVertex v2, LineString geometry,
                       I18NString name, double length,
                       StreetTraversalPermission permission, boolean back) {
@@ -772,5 +780,18 @@ public class StreetEdge extends Edge implements Cloneable {
         }
 
         return new P2<StreetEdge>(e1, e2);
+    }
+
+    public void setWayTrafficLight(boolean hasWayTrafficLight, long OSMWayId) {
+        this.wayTrafficLight = hasWayTrafficLight;
+        this.trafficLightId = OSMWayId;
+    }
+
+    public boolean isWayTrafficLight() {
+        return wayTrafficLight;
+    }
+
+    public long getTrafficLightId() {
+        return trafficLightId;
     }
 }
