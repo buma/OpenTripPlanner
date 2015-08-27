@@ -13,6 +13,7 @@
 
 package org.opentripplanner.inspector;
 
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
@@ -31,14 +32,18 @@ import java.awt.*;
  */
 public class TrafficLightsEdgeRenderer implements EdgeVertexRenderer {
 
-    private static final Color TRAFFIC_LIGHT_COLOR = new Color(120, 60, 60);
+    private static final Color TRAFFIC_LIGHT_COLOR = new Color(0, 1f, 0, 0.4f);
 
     @Override public boolean renderEdge(Edge e, EdgeVisualAttributes attrs) {
         if (e instanceof StreetEdge) {
             StreetEdge pse = (StreetEdge) e;
-            if (pse.isWayTrafficLight()) {
+            if (pse.isWayTrafficLight() && pse.canTraverse(new TraverseModeSet("CAR"))) {
                 attrs.color = TRAFFIC_LIGHT_COLOR;
                 attrs.label = pse.getName();
+
+                if (pse.getDistance() > 100) {
+                    attrs.color = new Color(0f, 1f, 1f, 0.4f);
+                }
                 return true;
             }
         }
