@@ -23,10 +23,7 @@ import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.common.model.T2;
-import org.opentripplanner.graph_builder.annotation.GraphBuilderAnnotation;
-import org.opentripplanner.graph_builder.annotation.Graphwide;
-import org.opentripplanner.graph_builder.annotation.ParkAndRideUnlinked;
-import org.opentripplanner.graph_builder.annotation.StreetCarSpeedZero;
+import org.opentripplanner.graph_builder.annotation.*;
 import org.opentripplanner.graph_builder.module.extra_elevation_data.ElevationPoint;
 import org.opentripplanner.graph_builder.services.DefaultStreetEdgeFactory;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
@@ -628,8 +625,22 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                                     LOG.error(e.getMessage() + " in node:{} on way:{}", osmEndNode,
                                         way);
                                 }
+                                reportTrafficSignal = true;
                             }
                         }
+                    }
+                }
+                if (reportTrafficSignal) {
+                    OSMNode distanceStartNode = osmdb.getNode(nodes.get(0));
+                    OSMNode distanceEndNode = osmdb.getNode(nodes.get(nodes.size()-1));
+                    double distance = SphericalDistanceLibrary.fastDistance(distanceStartNode.lat,
+                        distanceStartNode.lon, distanceEndNode.lat, distanceEndNode.lon);
+                    LOG.debug("Distance of way with traffic signal: {}", distance);
+                    //Too long ways with traffic light can be wrongly tagged (They should probably be split)
+                    if (distance > 100) {
+                        way.addTag("backward_traffic_signals", "false");
+                        way.addTag("forward_traffic_signals", "false");
+                        LOG.warn(graph.addBuilderAnnotation(new WayWithTrafficLightTooLong(way.getId(), distance)));
                     }
                 }
                 //END Traffic light LOOP
@@ -730,7 +741,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                 }
                 street.setNoThruTraffic(noThruTraffic);
 
-                if (way.hasTag("forward_traffic_signals")) {
+                if (way.isTagTrue("forward_traffic_signals")) {
                     street.setWayTrafficLight(true, way.getId());
                 }
             }
@@ -747,7 +758,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                 }
                 backStreet.setNoThruTraffic(noThruTraffic);
 
-                if (way.hasTag("backward_traffic_signals")) {
+                if (way.isTagTrue("backward_traffic_signals")) {
                     backStreet.setWayTrafficLight(true, way.getId());
                 }
             }
