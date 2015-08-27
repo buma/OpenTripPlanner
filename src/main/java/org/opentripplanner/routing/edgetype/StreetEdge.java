@@ -777,6 +777,7 @@ public class StreetEdge extends Edge implements Cloneable {
             e.setStairs(isStairs());
             e.setWheelchairAccessible(isWheelchairAccessible());
             e.setBack(isBack());
+            e.setWayTrafficLight(wayTrafficLight, trafficLightId);
         }
 
         return new P2<StreetEdge>(e1, e2);
