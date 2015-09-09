@@ -31,6 +31,8 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Point;
+import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.bike_rental.BikeRentalStationService;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.graph.Graph;
@@ -77,6 +79,16 @@ public class RouterInfo {
         service = graph.getService(BikeRentalStationService.class, false);
         hasParkRide = graph.hasParkRide;
         travelOptions = TravelOptionsMaker.makeOptions(graph);
+    }
+
+    public RouterInfo(String routerId) {
+        this.routerId = routerId;
+        this.polygon = GeometryUtils.getGeometryFactory().createPoint(new Coordinate(45.2,15.6));
+        this.envelope = new WorldEnvelope();
+        this.envelope.expandToInclude(45.2,15.6);
+        this.envelope.expandToInclude(45.08,15.03);
+        service = null;
+        hasParkRide = false;
     }
 
     public boolean getHasBikeSharing() {
