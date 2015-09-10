@@ -103,7 +103,7 @@ public class StreetLayer implements Serializable {
             // Break each OSM way into topological segments between intersections, and make one edge per segment.
             for (int n = 1; n < way.nodes.length; n++) {
                 if (osm.intersectionNodes.contains(way.nodes[n]) || n == (way.nodes.length - 1)) {
-                    makeEdge(way, beginIdx, n);
+                    makeEdge(way, beginIdx, n, entry.getKey());
                     nEdgesCreated += 1;
                     beginIdx = n;
                 }
@@ -161,7 +161,7 @@ public class StreetLayer implements Serializable {
     /**
      * Make an edge for a sub-section of an OSM way, typically between two intersections or dead ends.
      */
-    private void makeEdge (Way way, int beginIdx, int endIdx) {
+    private void makeEdge(Way way, int beginIdx, int endIdx, Long osmID) {
 
         long beginOsmNodeId = way.nodes[beginIdx];
         long endOsmNodeId = way.nodes[endIdx];
@@ -187,7 +187,7 @@ public class StreetLayer implements Serializable {
         }
 
         // Create and store the forward and backward edge
-        EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex, edgeLengthMillimeters);
+        EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex, edgeLengthMillimeters, osmID);
         newForwardEdge.setGeometry(nodes);
         pointsPerEdgeHistogram.add(nNodes);
 
@@ -301,7 +301,8 @@ public class StreetLayer implements Serializable {
 
         // Make a second, new bidirectional edge pair after the split and add it to the spatial index.
         // New edges will be added to edge lists later (the edge list is a transient index).
-        EdgeStore.Edge newEdge = edgeStore.addStreetPair(newVertexIndex, oldToVertex, split.distance1_mm);
+        EdgeStore.Edge newEdge = edgeStore.addStreetPair(newVertexIndex, oldToVertex, split.distance1_mm,
+            edge.getOSMID());
         spatialIndex.insert(newEdge.getEnvelope(), newEdge.edgeIndex);
         // TODO newEdge.copyFlagsFrom(edge) to match the existing edge...
         return newVertexIndex;
