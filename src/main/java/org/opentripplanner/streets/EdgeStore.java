@@ -1,9 +1,12 @@
 package org.opentripplanner.streets;
 
 import com.conveyal.osmlib.Node;
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.LineString;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
+import org.opentripplanner.common.geometry.GeometryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -265,6 +268,50 @@ public class EdgeStore implements Serializable {
                 intermediateCoords[i++] = node.fixedLon;
             }
             geometries.set(pairIndex, intermediateCoords);
+        }
+
+        /**
+         * Returns LineString geometry of edge
+         * Uses from/to vertices for first/last node and nodes from geometries for middle nodes
+         *
+         * TODO: it might be better idea to return just list of coordinates
+         * @return
+         */
+        public LineString getGeometry() {
+            int[] coords = geometries.get(pairIndex);
+            //Size is 2 (from and to vertex) if there are no intermediate vertices
+            int size = coords == EMPTY_INT_ARRAY ? 2 :
+                //division with two since coordinates are in same array saved as lat, lon,lat etc.
+                (coords.length / 2) + 2;
+            Coordinate[] c = new Coordinate[size];
+
+            VertexStore.Vertex fromVertex = vertexStore.getCursor(getFromVertex());
+            VertexStore.Vertex toVertex = vertexStore.getCursor(getToVertex());
+
+            double fromVertexLon = fromVertex.getLon();
+            double fromVertexLat = fromVertex.getLat();
+            double toVertexLon = toVertex.getLon();
+            double toVertexLat = toVertex.getLat();
+
+            boolean reverse = isBackward();
+
+            double firstCoorLon = reverse ? toVertexLon : fromVertexLon;
+            double firstCoorLat = reverse ? toVertexLat : fromVertexLat;
+            double lastCoorLon = reverse ? fromVertexLon : toVertexLon;
+            double lastCoorLat = reverse ? fromVertexLat : toVertexLat;
+            c[0] = new Coordinate(firstCoorLon, firstCoorLat);
+            if (coords != null) {
+                for (int i = 1; i < c.length - 1; i++) {
+                    int ilat = coords[(i - 1) * 2];
+                    int ilon = coords[(i - 1) * 2 + 1];
+                    c[i] = new Coordinate(ilon / VertexStore.FIXED_FACTOR, ilat /  VertexStore.FIXED_FACTOR);
+                }
+            }
+            c[c.length - 1] = new Coordinate(lastCoorLon, lastCoorLat);
+            LineString out = GeometryUtils.getGeometryFactory().createLineString(c);
+            if (reverse)
+                out = (LineString) out.reverse();
+            return out;
         }
 
         /**
