@@ -18,6 +18,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * This routes over the street layer of a TransitNetwork.
@@ -47,6 +49,9 @@ public class StreetRouter {
     // If you set this to a non-negative number, the search will be directed toward that vertex .
     public int toVertex = ALL_VERTICES;
 
+    //Last state when target vertex was found
+    private State lastState = null;
+
     /**
      * @return a map from transit stop indexes to their distances from the origin.
      * Note that the TransitLayer contains all the information about which street vertices are transit stops.
@@ -63,6 +68,25 @@ public class StreetRouter {
             return true; // continue iteration
         });
         return result;
+    }
+
+    public List<Integer> getVisitedEdges() {
+        LOG.info("Best states:{}", bestStates.size());
+
+        LinkedList<Integer> edges = new LinkedList<>();
+        if (lastState == null) {
+            LOG.error("Path not found");
+            return edges;
+        }
+        LinkedList<State> states = new LinkedList<>();
+
+        for (State cur = lastState; cur != null; cur = cur.backState) {
+            states.addFirst(cur);
+            if (cur.backEdge != -1 && cur.backState != null) {
+                edges.addFirst(cur.backEdge);
+            }
+        }
+        return edges;
     }
 
     /**
@@ -97,6 +121,7 @@ public class StreetRouter {
         }
         bestStates.clear();
         queue.reset();
+        lastState = null;
         State startState0 = new State(split.vertex0, -1, null);
         State startState1 = new State(split.vertex1, -1, null);
         // TODO walk speed, assuming 1 m/sec currently.
@@ -111,6 +136,7 @@ public class StreetRouter {
     public void setOrigin (int fromVertex) {
         bestStates.clear();
         queue.reset();
+        lastState = null;
         State startState = new State(fromVertex, -1, null);
         bestStates.put(fromVertex, startState);
         queue.insert(startState, 0);
@@ -155,6 +181,7 @@ public class StreetRouter {
             int v0 = s0.vertex;
             if (goalDirection && v0 == toVertex) {
                 LOG.debug("Found destination vertex. Tree size is {}.", bestStates.size());
+                lastState = s0;
                 break;
             }
             if (DEBUG_OUTPUT) {

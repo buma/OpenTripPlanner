@@ -236,6 +236,14 @@ public class EdgeStore implements Serializable {
         }
 
         /**
+         * Returns length of edge in meters
+         * @return
+         */
+        public double getLengthM() {
+            return getLengthMm() / 1000.0;
+        }
+
+        /**
          * Set the length for the current edge pair (always the same in both directions).
          */
         public void setLengthMm (int millimeters) {
