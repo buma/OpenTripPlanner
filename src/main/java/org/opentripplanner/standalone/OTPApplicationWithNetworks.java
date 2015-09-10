@@ -80,7 +80,10 @@ public class OTPApplicationWithNetworks extends Application {
 
         Set<Class<?>> classes = Sets.newHashSet();
         classes.addAll(Arrays.asList(
-            Routers.class, ServerInfo.class
+            Routers.class,
+            ServerInfo.class,
+
+            CorsFilter.class
         ));
 
         if (this.secure) {
