@@ -51,7 +51,7 @@ public class OTPApplicationWithNetworks extends Application {
     }
 
     /* This object groups together all the modules for a single running OTP server. */
-    //public final OTPServer server;
+    public final OTPServerWithNetworks server;
 
     /* If secure is true, OTP will require Basic authentication over HTTPS when accessing dangerous web services. */
     private final boolean secure;
@@ -63,8 +63,8 @@ public class OTPApplicationWithNetworks extends Application {
      * @param server The OTP server to wrap
      * @param secure Should this server require authentication over HTTPS to access secure resources, e.g. /routers?
      */
-    public OTPApplicationWithNetworks(boolean secure) {
-        //this.server = server;
+    public OTPApplicationWithNetworks(OTPServerWithNetworks server, boolean secure) {
+        this.server = server;
         this.secure = secure;
     }
 
@@ -109,9 +109,9 @@ public class OTPApplicationWithNetworks extends Application {
             // Enable Jackson XML response serialization
             new JacksonXMLProvider(),
             // Serialize POJOs (unannotated) JSON using Jackson
-            new JSONObjectMapperProvider()
+            new JSONObjectMapperProvider(),
             // Allow injecting the OTP server object into Jersey resource classes
-            //server.makeBinder()
+            server.makeBinder()
         );
     }
 

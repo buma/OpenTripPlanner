@@ -34,11 +34,14 @@ public class GrizzlyServer {
     /** The command line parameters, including things like port number and content directories. */
     private CommandLineParameters params;
     private OTPServer server;
+    private OTPServerWithNetworks serverWithNetworks;
 
     /** Construct a Grizzly server with the given IoC injector and command line parameters. */
-    public GrizzlyServer (CommandLineParameters params, OTPServer server) {
+    public GrizzlyServer(CommandLineParameters params, OTPServer server,
+        OTPServerWithNetworks serverWithNetworks) {
         this.params = params;
         this.server = server;
+        this.serverWithNetworks = serverWithNetworks;
     }
 
     /**
@@ -94,10 +97,15 @@ public class GrizzlyServer {
         HttpHandler dynamicHandler = ContainerFactory.createContainer(HttpHandler.class, app);
         httpServer.getServerConfiguration().addHttpHandler(dynamicHandler, "/otp/");
 
-        /* A Grizzly wrapper around Transit networks Jersey Application. */
-        Application networksApp = new OTPApplicationWithNetworks(!params.insecure);
-        HttpHandler dynamicHandlerNetworks = ContainerFactory.createContainer(HttpHandler.class, networksApp);
-        httpServer.getServerConfiguration().addHttpHandler(dynamicHandlerNetworks, "/otp_networks/");
+        if (serverWithNetworks != null) {
+            LOG.info("Starting OTP Grizzly server for transit networks under path {}", "otp_networks");
+            /* A Grizzly wrapper around Transit networks Jersey Application. */
+            Application networksApp = new OTPApplicationWithNetworks(serverWithNetworks, !params.insecure);
+            HttpHandler dynamicHandlerNetworks = ContainerFactory
+                .createContainer(HttpHandler.class, networksApp);
+            httpServer.getServerConfiguration()
+                .addHttpHandler(dynamicHandlerNetworks, "/otp_networks/");
+        }
 
         /* 2. A static content handler to serve the client JS apps etc. from the classpath. */
         CLStaticHttpHandler staticHandler = new CLStaticHttpHandler(GrizzlyServer.class.getClassLoader(), "/client/");

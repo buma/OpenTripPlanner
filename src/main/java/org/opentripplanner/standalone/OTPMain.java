@@ -29,13 +29,12 @@ import org.opentripplanner.routing.impl.MemoryGraphSource;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.scripting.impl.BSFOTPScript;
 import org.opentripplanner.scripting.impl.OTPScript;
+import org.opentripplanner.transit.TransportNetwork;
 import org.opentripplanner.visualizer.GraphVisualizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.*;
 
 /**
  * This is the main entry point to OpenTripPlanner. It allows both building graphs and starting up an OTP server
@@ -54,6 +53,9 @@ public class OTPMain {
     private final CommandLineParameters params;
     public OTPServer otpServer = null;
     public GraphService graphService = null;
+
+    //For new transitNetworks type routing
+    public OTPServerWithNetworks otpServerWithNetworks = null;
 
     /** ENTRY POINT: This is the main method that is called when running otp.jar from the command line. */
     public static void main(String[] args) {
@@ -106,6 +108,11 @@ public class OTPMain {
         makeGraphService();
         otpServer = new OTPServer(params, graphService);
 
+        if (params.transitNetworks) {
+            LOG.info("Using transit networks");
+            otpServerWithNetworks = new OTPServerWithNetworks(params);
+        }
+
         /* Start graph builder if requested */
         if (params.build != null) {
             GraphBuilder graphBuilder = GraphBuilder.forDirectory(params, params.build); // TODO multiple directories
@@ -122,6 +129,25 @@ public class OTPMain {
                 LOG.error("An error occurred while building the graph. Exiting.");
                 System.exit(-1);
             }
+
+            if (params.transitNetworks) {
+                LOG.info("Building transit networks.");
+                otpServerWithNetworks.transportNetwork = TransportNetwork.fromDirectory(params.build);
+                otpServerWithNetworks.transportNetwork.makeEnvelope();
+                //In memory doesn't save it to disk others do (build, preFlight)
+                if (!params.inMemory) {
+                    try {
+                        OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(new File(params.build,"network.dat")));
+                        otpServerWithNetworks.transportNetwork.write(outputStream);
+                        outputStream.close();
+                    } catch (IOException e) {
+                        LOG.error("An error occurred during saving transit networks. Exiting.", e);
+                        System.exit(-1);
+                    }
+
+                }
+            }
+
         }
 
         /* Scan for graphs to load from disk if requested */
@@ -135,6 +161,24 @@ public class OTPMain {
             }
             graphScanner.autoRegister = params.routerIds;
             graphScanner.startup();
+
+            if (params.transitNetworks) {
+                //TODO: Currently only first router is supported
+                try {
+                    File routerDirectory = new File(params.graphDirectory, params.routerIds.get(0));
+                    LOG.info("Loading transit networks from: {}", routerDirectory);
+                    InputStream inputStream = new BufferedInputStream(new FileInputStream(new File(routerDirectory, "network.dat")));
+                    otpServerWithNetworks.transportNetwork = TransportNetwork.read(inputStream);
+                    inputStream.close();
+                    otpServerWithNetworks.transportNetwork.makeEnvelope();
+                } catch (IOException e) {
+                    LOG.error("An error occurred during reading of transit networks", e);
+                    System.exit(-1);
+                } catch (Exception e) {
+                    LOG.error("An error occurred during decoding of transit networks", e);
+                    System.exit(-1);
+                }
+            }
         }
 
         /* Start visualizer if requested */
@@ -162,7 +206,7 @@ public class OTPMain {
 
         /* Start web server if requested */
         if (params.server) {
-            GrizzlyServer grizzlyServer = new GrizzlyServer(params, otpServer);
+            GrizzlyServer grizzlyServer = new GrizzlyServer(params, otpServer, otpServerWithNetworks);
             while (true) { // Loop to restart server on uncaught fatal exceptions.
                 try {
                     grizzlyServer.run();

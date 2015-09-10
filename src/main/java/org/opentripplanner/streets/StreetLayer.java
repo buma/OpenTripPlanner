@@ -14,6 +14,7 @@ import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.transit.TransitLayer;
+import org.opentripplanner.util.WorldEnvelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -428,5 +429,9 @@ public class StreetLayer implements Serializable {
         }
 
         LOG.info("Done removing subgraphs. {} edges remain", edgeStore.nEdges);
+    }
+
+    public WorldEnvelope getEnvelope() {
+        return this.vertexStore.envelope;
     }
 }

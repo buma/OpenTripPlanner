@@ -31,11 +31,11 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Point;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.bike_rental.BikeRentalStationService;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.transit.TransportNetwork;
 import org.opentripplanner.util.TravelOption;
 import org.opentripplanner.util.TravelOptionsMaker;
 import org.opentripplanner.util.WorldEnvelope;
@@ -81,14 +81,16 @@ public class RouterInfo {
         travelOptions = TravelOptionsMaker.makeOptions(graph);
     }
 
-    public RouterInfo(String routerId) {
+    public RouterInfo(String routerId, TransportNetwork transportNetwork) {
         this.routerId = routerId;
-        this.polygon = GeometryUtils.getGeometryFactory().createPoint(new Coordinate(45.2,15.6));
-        this.envelope = new WorldEnvelope();
-        this.envelope.expandToInclude(45.2,15.6);
-        this.envelope.expandToInclude(45.08,15.03);
+        this.envelope = transportNetwork.envelope;
+        //TODO: make convexHull
+        this.polygon = GeometryUtils.getGeometryFactory().createPoint(new Coordinate(envelope.getLowerLeftLongitude(), envelope.getLowerLeftLatitude()));
+        addCenter(transportNetwork.getCenter());
+        //This is currently false since there is no support for it in the API
         service = null;
         hasParkRide = false;
+        //TODO: fill travelOptions and transitModes
     }
 
     public boolean getHasBikeSharing() {

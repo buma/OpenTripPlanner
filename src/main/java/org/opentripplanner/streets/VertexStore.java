@@ -2,6 +2,7 @@ package org.opentripplanner.streets;
 
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
+import org.opentripplanner.util.WorldEnvelope;
 
 import java.io.Serializable;
 
@@ -16,10 +17,12 @@ public class VertexStore implements Serializable {
     public static final double FIXED_FACTOR = 1e7; // we could just reuse the constant from osm-lib Node.
     public TIntList fixedLats;
     public TIntList fixedLons;
+    public WorldEnvelope envelope;
 
     public VertexStore (int initialSize) {
         fixedLats = new TIntArrayList(initialSize);
         fixedLons = new TIntArrayList(initialSize);
+        envelope = new WorldEnvelope();
     }
 
     /**
@@ -27,6 +30,7 @@ public class VertexStore implements Serializable {
      * @return the index of the new vertex.
      */
     public int addVertex (double lat, double lon) {
+        envelope.expandToInclude(lon, lat);
         return addVertexFixed(floatingDegreesToFixed(lat), floatingDegreesToFixed(lon));
     }
 

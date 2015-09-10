@@ -1,16 +1,19 @@
 package org.opentripplanner.transit;
 
 import com.conveyal.osmlib.OSM;
+import com.vividsolutions.jts.geom.Coordinate;
 import org.nustaq.serialization.FSTObjectInput;
 import org.nustaq.serialization.FSTObjectOutput;
 import org.opentripplanner.analyst.PointSet;
 import org.opentripplanner.streets.LinkedPointSet;
 import org.opentripplanner.streets.StreetLayer;
 import org.opentripplanner.streets.StreetRouter;
+import org.opentripplanner.util.WorldEnvelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.Optional;
 import java.util.Random;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -27,6 +30,8 @@ public class TransportNetwork implements Serializable {
     public StreetLayer streetLayer;
 
     public TransitLayer transitLayer;
+
+    public WorldEnvelope envelope;
 
     public void write (OutputStream stream) throws IOException {
         LOG.info("Writing transport network...");
@@ -140,6 +145,28 @@ public class TransportNetwork implements Serializable {
             }
         }
         return fromFiles(osmFile.getAbsolutePath(), gtfsFile.getAbsolutePath());
+    }
+
+    public void makeEnvelope() {
+        if (streetLayer != null) {
+            this.envelope = new WorldEnvelope(streetLayer.getEnvelope());
+        } else {
+            this.envelope = new WorldEnvelope();
+        }
+        //TODO: add support for stops from transitLayer in envelope
+        /*if (transitLayer != null) {
+            for (Stop stop : transitLayer.stopForIndex) {
+                this.envelope.expandToInclude(stop.stop_lon, stop.stop_lat);
+            }
+        }*/
+    }
+
+    public Optional<Coordinate> getCenter() {
+        if (transitLayer != null) {
+            return Optional.of(new Coordinate(transitLayer.centerLon, transitLayer.centerLat));
+        } else {
+            return Optional.empty();
+        }
     }
 
     /**

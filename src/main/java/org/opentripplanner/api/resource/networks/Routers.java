@@ -15,6 +15,7 @@ package org.opentripplanner.api.resource.networks;
 
 import org.opentripplanner.api.model.RouterInfo;
 import org.opentripplanner.api.model.RouterList;
+import org.opentripplanner.standalone.OTPServerWithNetworks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +23,7 @@ import javax.annotation.security.PermitAll;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
 /**
@@ -36,6 +38,7 @@ public class Routers {
     static final String Q = ";qs=0.5";
 
     //Context with some kind of data is missing.
+    @Context OTPServerWithNetworks otpServerWithNetworks;
 
     /**
      * Returns a list of routers and their bounds.
@@ -46,7 +49,7 @@ public class Routers {
     @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML + Q, MediaType.TEXT_XML + Q })
     public RouterList getRouterIds() {
         RouterList routerList = new RouterList();
-        RouterInfo routerInfo = new RouterInfo("default");
+        RouterInfo routerInfo = new RouterInfo("default", otpServerWithNetworks.transportNetwork);
         routerList.routerInfo.add(routerInfo);
         return routerList;
     }
