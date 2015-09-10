@@ -5,6 +5,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import org.nustaq.serialization.FSTObjectInput;
 import org.nustaq.serialization.FSTObjectOutput;
 import org.opentripplanner.analyst.PointSet;
+import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.streets.LinkedPointSet;
 import org.opentripplanner.streets.StreetLayer;
 import org.opentripplanner.streets.StreetRouter;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Random;
 import java.util.zip.ZipEntry;
@@ -166,6 +168,14 @@ public class TransportNetwork implements Serializable {
             return Optional.of(new Coordinate(transitLayer.centerLon, transitLayer.centerLat));
         } else {
             return Optional.empty();
+        }
+    }
+
+    public HashSet<TraverseMode> getTransitModes() {
+        if (transitLayer != null) {
+            return transitLayer.transitModes;
+        } else {
+            return new HashSet<>();
         }
     }
 

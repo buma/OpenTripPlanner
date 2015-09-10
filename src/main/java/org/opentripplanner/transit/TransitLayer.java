@@ -1,7 +1,8 @@
 package org.opentripplanner.transit;
 
 import com.conveyal.gtfs.GTFSFeed;
-import com.conveyal.gtfs.model.Service;
+import com.conveyal.gtfs.model.*;
+import com.conveyal.gtfs.model.Route;
 import com.conveyal.gtfs.model.Stop;
 import com.conveyal.gtfs.model.StopTime;
 import com.conveyal.gtfs.model.Trip;
@@ -15,20 +16,14 @@ import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import org.joda.time.LocalDate;
+import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.streets.StreetLayer;
-import org.opentripplanner.streets.StreetRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * A key simplifying factor is that we don't handle overnight trips. This is fine for analysis at usual times of day.
@@ -59,6 +54,9 @@ public class TransitLayer implements Serializable {
 
     public List<Service> services = new ArrayList<>();
 
+    //Which transit modes are used in this layer
+    public HashSet<TraverseMode> transitModes;
+
     // TODO there is probably a better way to do this, but for now we need to retain stop object for linking to streets
     public transient List<Stop> stopForIndex = new ArrayList<>();
 
@@ -73,6 +71,62 @@ public class TransitLayer implements Serializable {
      * This field is only public because it has to be set from StreetLayer, which is in another package.
      */
     public StreetLayer linkedStreetLayer = null;
+
+    /**
+     * Copied from {@link org.opentripplanner.gtfs.GtfsLibrary#getTraverseMode(org.onebusaway.gtfs.model.Route)} but it should probably be in GTFSFeed
+     */
+    private static TraverseMode getTraverseMode(Route route) {
+        int routeType = route.route_type;
+        /* TPEG Extension  https://groups.google.com/d/msg/gtfs-changes/keT5rTPS7Y0/71uMz2l6ke0J */
+        if (routeType >= 100 && routeType < 200){ // Railway Service
+            return TraverseMode.RAIL;
+        }else if (routeType >= 200 && routeType < 300){ //Coach Service
+            return TraverseMode.BUS;
+        }else if (routeType >= 300 && routeType < 500){ //Suburban Railway Service and Urban Railway service
+            return TraverseMode.RAIL;
+        }else if (routeType >= 500 && routeType < 700){ //Metro Service and Underground Service
+            return TraverseMode.SUBWAY;
+        }else if (routeType >= 700 && routeType < 900){ //Bus Service and Trolleybus service
+            return TraverseMode.BUS;
+        }else if (routeType >= 900 && routeType < 1000){ //Tram service
+            return TraverseMode.TRAM;
+        }else if (routeType >= 1000 && routeType < 1100){ //Water Transport Service
+            return TraverseMode.FERRY;
+        }else if (routeType >= 1100 && routeType < 1200){ //Air Service
+            throw new IllegalArgumentException("Air transport not supported" + routeType);
+        }else if (routeType >= 1200 && routeType < 1300){ //Ferry Service
+            return TraverseMode.FERRY;
+        }else if (routeType >= 1300 && routeType < 1400){ //Telecabin Service
+            return TraverseMode.GONDOLA;
+        }else if (routeType >= 1400 && routeType < 1500){ //Funicalar Service
+            return TraverseMode.FUNICULAR;
+        }else if (routeType >= 1500 && routeType < 1600){ //Taxi Service
+            throw new IllegalArgumentException("Taxi service not supported" + routeType);
+        }else if (routeType >= 1600 && routeType < 1700){ //Self drive
+            return TraverseMode.CAR;
+        }
+        /* Original GTFS route types. Should these be checked before TPEG types? */
+        switch (routeType) {
+        case 0:
+            return TraverseMode.TRAM;
+        case 1:
+            return TraverseMode.SUBWAY;
+        case 2:
+            return TraverseMode.RAIL;
+        case 3:
+            return TraverseMode.BUS;
+        case 4:
+            return TraverseMode.FERRY;
+        case 5:
+            return TraverseMode.CABLE_CAR;
+        case 6:
+            return TraverseMode.GONDOLA;
+        case 7:
+            return TraverseMode.FUNICULAR;
+        default:
+            throw new IllegalArgumentException("unknown gtfs route type " + routeType);
+        }
+    }
 
     /**
      * Seems kind of hackish to pass the street layer in.
@@ -90,6 +144,7 @@ public class TransitLayer implements Serializable {
      * and all methods would have to be designed to be called multiple times in successtion.
      */
     public void loadFromGtfs (GTFSFeed gtfs) {
+
 
         // Load stops.
         // ID is the GTFS string ID, stopIndex is the zero-based index, stopVertexIndex is the index in the street layer.
@@ -165,6 +220,16 @@ public class TransitLayer implements Serializable {
 
         LOG.info("Finding the approximate center of the transport network...");
         findCenter(gtfs.stops.values());
+
+        LOG.info("Finding transit modes in the transport network...");
+
+        transitModes = new HashSet<>(10);
+
+        transitModes.addAll(gtfs.routes.values().stream()
+            .map(TransitLayer::getTraverseMode)
+            .collect(Collectors.toList()));
+
+        LOG.info("Found modes:{}", transitModes);
 
         // Will be useful in naming patterns.
 //        LOG.info("Finding topology of each route/direction...");

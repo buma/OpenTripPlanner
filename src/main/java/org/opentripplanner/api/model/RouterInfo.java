@@ -84,13 +84,14 @@ public class RouterInfo {
     public RouterInfo(String routerId, TransportNetwork transportNetwork) {
         this.routerId = routerId;
         this.envelope = transportNetwork.envelope;
+        this.transitModes = transportNetwork.getTransitModes();
         //TODO: make convexHull
         this.polygon = GeometryUtils.getGeometryFactory().createPoint(new Coordinate(envelope.getLowerLeftLongitude(), envelope.getLowerLeftLatitude()));
         addCenter(transportNetwork.getCenter());
         //This is currently false since there is no support for it in the API
         service = null;
         hasParkRide = false;
-        //TODO: fill travelOptions and transitModes
+        //TODO: fill travelOptions
     }
 
     public boolean getHasBikeSharing() {
