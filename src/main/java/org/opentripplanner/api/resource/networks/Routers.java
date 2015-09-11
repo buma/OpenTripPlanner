@@ -20,11 +20,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.security.PermitAll;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
 
 /**
  * Created by mabu on 9.9.2015.
@@ -52,5 +52,23 @@ public class Routers {
         RouterInfo routerInfo = new RouterInfo("default", otpServerWithNetworks.transportNetwork);
         routerList.routerInfo.add(routerInfo);
         return routerList;
+    }
+
+    /**
+     * Returns the bounds for a specific routerId, or verifies whether it is registered.
+     * @returns status code 200 if the routerId is registered, otherwise a 404.
+     */
+    @GET
+    @Path("{routerId}")
+    @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML + Q, MediaType.TEXT_XML + Q })
+    public RouterInfo getGraphId(@PathParam("routerId") String routerId) {
+        if (routerId.equals("default")) {
+            RouterInfo routerInfo = new RouterInfo("default", otpServerWithNetworks.transportNetwork);
+            return routerInfo;
+        } else {
+            throw new WebApplicationException(Response.status(Response.Status.NOT_FOUND)
+            .entity("Graph id '" + routerId + "' not registered.\n").type("text/plain")
+            .build());
+        }
     }
 }
