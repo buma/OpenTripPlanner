@@ -24,7 +24,7 @@
 
         // add the street layer
         $.ajax({
-          url: '/api/streetEdges' + bbstring,
+          url: '/otp_networks/routers/default/visualize/streetEdges' + bbstring,
           success: function (data) {
             window.map.layers.push(L.geoJson(data).addTo(window.map));
           }

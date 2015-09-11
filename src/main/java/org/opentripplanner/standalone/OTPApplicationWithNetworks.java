@@ -25,6 +25,7 @@ import org.opentripplanner.api.model.JSONObjectMapperProvider;
 import org.opentripplanner.api.resource.ServerInfo;
 import org.opentripplanner.api.resource.networks.PlannerResource;
 import org.opentripplanner.api.resource.networks.Routers;
+import org.opentripplanner.api.resource.networks.TransportNetworkVisualizer;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import javax.ws.rs.core.Application;
@@ -84,6 +85,7 @@ public class OTPApplicationWithNetworks extends Application {
             Routers.class,
             ServerInfo.class,
             PlannerResource.class,
+            TransportNetworkVisualizer.class,
 
             CorsFilter.class
         ));
