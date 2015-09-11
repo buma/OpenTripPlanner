@@ -10,6 +10,12 @@
     <div id="map" style="width: 1200px; height: 900px">
     </div>
     <script type="text/javascript">
+      var otp_config = {
+          hostname: "http://localhost:8080",
+          restService: "otp_networks/routers",
+          routerId: "default"
+      };
+      var url = '/' + otp_config.restService + '/' + otp_config.routerId + '/';
       function updateMap () {
         if (window.map.layers) {
           window.map.layers.forEach(function (layer) {
@@ -20,11 +26,18 @@
         window.map.layers = [];
 
         var bbox = window.map.getBounds();
-        var bbstring = '?n=' + bbox.getNorth() + '&s=' + bbox.getSouth() + '&e=' + bbox.getEast() + '&w=' + bbox.getWest();
+        var params = {
+            n : bbox.getNorth(),
+            s : bbox.getSouth(),
+            e : bbox.getEast(),
+            w : bbox.getWest()
+        };
+
 
         // add the street layer
         $.ajax({
-          url: '/otp_networks/routers/default/visualize/streetEdges' + bbstring,
+          data: params,
+          url: url + 'visualize/streetEdges',
           success: function (data) {
             window.map.layers.push(L.geoJson(data).addTo(window.map));
           }
@@ -32,8 +45,16 @@
       }
 
       // initialize Leaflet map
-      // TODO get center from api
-      window.map = L.map('map').setView([42.358056, -71.063611], 11);
+      window.map = L.map('map', {'zoom': 11});
+      $.ajax(url, {
+          dataType: 'JSON',
+          success: function(data) {
+              window.map.fitBounds([
+                  [data.lowerLeftLatitude, data.lowerLeftLongitude],
+                  [data.upperRightLatitude, data.upperRightLongitude]
+              ]);
+          }
+      });
 
       // bg
       L.tileLayer('//{s}.tiles.mapbox.com/v3/conveyal.hml987j0/{z}/{x}/{y}.png', {
