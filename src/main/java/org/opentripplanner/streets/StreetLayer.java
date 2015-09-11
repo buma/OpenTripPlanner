@@ -186,8 +186,10 @@ public class StreetLayer implements Serializable {
             return;
         }
 
+        String name = way.getTag("name");
+
         // Create and store the forward and backward edge
-        EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex, edgeLengthMillimeters, osmID);
+        EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex, edgeLengthMillimeters, osmID, name);
         newForwardEdge.setGeometry(nodes);
         pointsPerEdgeHistogram.add(nNodes);
 
@@ -302,7 +304,7 @@ public class StreetLayer implements Serializable {
         // Make a second, new bidirectional edge pair after the split and add it to the spatial index.
         // New edges will be added to edge lists later (the edge list is a transient index).
         EdgeStore.Edge newEdge = edgeStore.addStreetPair(newVertexIndex, oldToVertex, split.distance1_mm,
-            edge.getOSMID());
+            edge.getOSMID(), edge.getName());
         spatialIndex.insert(newEdge.getEnvelope(), newEdge.edgeIndex);
         // TODO newEdge.copyFlagsFrom(edge) to match the existing edge...
         return newVertexIndex;

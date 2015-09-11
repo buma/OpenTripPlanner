@@ -8,6 +8,9 @@ import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.list.array.TLongArrayList;
+import gnu.trove.map.hash.TLongObjectHashMap;
+import gnu.trove.set.TLongSet;
+import gnu.trove.set.hash.TLongHashSet;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +44,7 @@ public class EdgeStore implements Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(EdgeStore.class);
     private static final int DEFAULT_SPEED_KPH = 50;
     private static final int[] EMPTY_INT_ARRAY = new int[0];
+    private static final String EMPTY_NAME = "NO_NAME";
 
     // The vertices that are referred to in these edges
     private VertexStore vertexStore;
@@ -64,6 +68,13 @@ public class EdgeStore implements Serializable {
 
     protected TLongList osmids;
 
+    /* Testing in LA:
+    - size without names 56911905
+    - size with names in List<String>: 63671592
+    - size with osm_ids names 62059823 (Without removal of unused names)
+    - size with removal of unused names 62011819*/
+    protected TLongObjectHashMap<String> osmids_names;
+
     /** Geometries. One entry for each edge pair */
     protected List<int[]> geometries; // intermediate points along the edge, other than the intersection endpoints
 
@@ -79,6 +90,7 @@ public class EdgeStore implements Serializable {
         geometries = new ArrayList<>(initialEdgePairs);
         lengths_mm = new TIntArrayList(initialEdgePairs);
         osmids = new TLongArrayList(initialEdgePairs);
+        osmids_names = new TLongObjectHashMap<>(initialEdgePairs);
     }
 
     /** Remove the specified edges from this edge store */
@@ -109,6 +121,18 @@ public class EdgeStore implements Serializable {
             geometries.remove(edge);
             nEdges -= 2;
         }
+        TLongSet used_osmids = new TLongHashSet(osmids.size());
+        //copies all used osm ids to set for faster contains operation
+        used_osmids.addAll(osmids);
+
+        //We remove all names for edges that were completely removed (osmId isn't used anymore)
+        osmids_names.retainEntries((osmId, name) -> used_osmids.contains(osmId));
+        osmids_names.trimToSize();
+
+
+        long noNameCount = osmids_names.valueCollection().parallelStream().filter(
+            name -> name.equals(EMPTY_NAME)).count();
+        LOG.info("Names:{} no name:{} ratio:{}%", osmids_names.size(), noNameCount, (noNameCount*1.0)/(osmids_names.size() * 1.0)*100);
     }
 
     // Maybe reserve the first 4-5 bits (or a whole byte, and 16 bits for flags) for mutually exclusive edge types.
@@ -146,7 +170,7 @@ public class EdgeStore implements Serializable {
      * @return a cursor pointing to the forward edge in the pair, which always has an even index.
      */
     public Edge addStreetPair(int beginVertexIndex, int endVertexIndex, int edgeLengthMillimeters,
-        long osmID) {
+        long osmID, String name) {
 
         // Store only one length, set of endpoints, and intermediate geometry per pair of edges.
         lengths_mm.add(edgeLengthMillimeters);
@@ -154,6 +178,12 @@ public class EdgeStore implements Serializable {
         toVertices.add(endVertexIndex);
         geometries.add(EMPTY_INT_ARRAY);
         osmids.add(osmID);
+
+        if (name == null) {
+            name = EMPTY_NAME;
+        }
+        name = name.intern();
+        osmids_names.put(osmID, name);
 
         // Forward edge
         speeds.add(DEFAULT_SPEED_KPH);
@@ -410,6 +440,10 @@ public class EdgeStore implements Serializable {
 
         public long getOSMID() {
             return osmids.get(pairIndex);
+        }
+
+        public String getName() {
+            return osmids_names.get(getOSMID());
         }
     }
 
