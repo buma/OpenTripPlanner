@@ -4,9 +4,11 @@ import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.list.array.TLongArrayList;
+import gnu.trove.map.hash.TLongObjectHashMap;
 import org.opentripplanner.util.WorldEnvelope;
 
 import java.io.Serializable;
+import java.util.Locale;
 
 /**
  *
@@ -20,6 +22,7 @@ public class VertexStore implements Serializable {
     public TIntList fixedLats;
     public TIntList fixedLons;
     public TLongList osmids;
+    public TLongObjectHashMap<String> osmids_names;
     public WorldEnvelope envelope;
 
     public static final long INVALID_OSM_ID = 0;
@@ -32,6 +35,7 @@ public class VertexStore implements Serializable {
         fixedLats = new TIntArrayList(initialSize);
         fixedLons = new TIntArrayList(initialSize);
         osmids = new TLongArrayList(initialSize);
+        osmids_names = new TLongObjectHashMap<>(initialSize);
         envelope = new WorldEnvelope();
     }
 
@@ -39,16 +43,17 @@ public class VertexStore implements Serializable {
      * Add a vertex, specifying its coordinates in double-precision floating point degrees.
      * @return the index of the new vertex.
      */
-    public int addVertex(double lat, double lon, long osmNodeId) {
+    public int addVertex(double lat, double lon, long osmNodeId, String name) {
         envelope.expandToInclude(lon, lat);
-        return addVertexFixed(floatingDegreesToFixed(lat), floatingDegreesToFixed(lon), osmNodeId);
+        return addVertexFixed(floatingDegreesToFixed(lat), floatingDegreesToFixed(lon), osmNodeId,
+            name);
     }
 
     /**
      * Add a vertex, specifying its coordinates in fixed-point lat and lon.
      * @return the index of the new vertex.
      */
-    public int addVertexFixed(int fixedLat, int fixedLon, long osmNodeId) {
+    public int addVertexFixed(int fixedLat, int fixedLon, long osmNodeId, String name) {
         int vertexIndex = nVertices++;
         fixedLats.add(fixedLat);
         fixedLons.add(fixedLon);
@@ -56,10 +61,14 @@ public class VertexStore implements Serializable {
             //This is for vertices which are created because of split roads
             //We first increase the number because if we insert ID as 0 this means no value for TLongList
             createdVerticesId++;
-            osmids.add(-createdVerticesId);
-        } else {
-            osmids.add(osmNodeId);
+            osmNodeId = -createdVerticesId;
         }
+        osmids.add(osmNodeId);
+        if (name != null) {
+            name = name.intern();
+            osmids_names.put(osmNodeId, name);
+        }
+
         return vertexIndex;
     }
 
@@ -115,6 +124,23 @@ public class VertexStore implements Serializable {
             return fixedLons.get(index);
         }
 
+        public long getOSMID() {
+            return osmids.get(index);
+        }
+
+        //TODO: add localized name
+        public String getName(Locale requestedLocale) {
+            String name = osmids_names.get(getOSMID());
+            if (name == null) {
+                return null;
+            } else {
+                return name;
+            }
+        }
+
+        public String getLabel() {
+            return "osm:id:" + getOSMID();
+        }
     }
 
     public Vertex getCursor() {

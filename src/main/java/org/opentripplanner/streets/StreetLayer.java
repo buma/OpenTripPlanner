@@ -134,7 +134,8 @@ public class StreetLayer implements Serializable {
             // Register a new vertex, incrementing the index starting from zero.
             // Store node coordinates for this new street vertex
             Node node = osm.nodes.get(osmNodeId);
-            vertexIndex = vertexStore.addVertex(node.getLat(), node.getLon(), osmNodeId);
+            String name = node.getTag("name");
+            vertexIndex = vertexStore.addVertex(node.getLat(), node.getLon(), osmNodeId, name);
             vertexIndexForOsmNode.put(osmNodeId, vertexIndex);
         }
         return vertexIndex;
@@ -292,7 +293,8 @@ public class StreetLayer implements Serializable {
         }
 
         // The split is somewhere away from an existing intersection vertex. Make a new vertex.
-        int newVertexIndex = vertexStore.addVertexFixed((int)split.fLat, (int)split.fLon, VertexStore.INVALID_OSM_ID);
+        int newVertexIndex = vertexStore.addVertexFixed((int)split.fLat, (int)split.fLon, VertexStore.INVALID_OSM_ID,
+            null);
 
         // Modify the existing bidirectional edge pair to lead up to the split.
         // Its spatial index entry is still valid, its envelope has only shrunk.
