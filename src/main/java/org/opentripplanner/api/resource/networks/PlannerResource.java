@@ -1,21 +1,13 @@
 package org.opentripplanner.api.resource.networks;
 
-import com.vividsolutions.jts.geom.LineString;
-import org.opentripplanner.api.model.Itinerary;
-import org.opentripplanner.api.model.Leg;
-import org.opentripplanner.api.model.Place;
 import org.opentripplanner.api.model.TripPlan;
 import org.opentripplanner.api.model.error.PlannerError;
-import org.opentripplanner.api.resource.CoordinateArrayListSequence;
 import org.opentripplanner.api.resource.Response;
-import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.core.RoutingRequest;
-import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.standalone.OTPServerWithNetworks;
-import org.opentripplanner.streets.EdgeStore;
 import org.opentripplanner.streets.Split;
 import org.opentripplanner.streets.StreetRouter;
-import org.opentripplanner.util.PolylineEncoder;
+import org.opentripplanner.streets.TransportNetworkPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,8 +15,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
-
-import java.util.Calendar;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.opentripplanner.api.resource.networks.Routers.Q;
@@ -88,54 +79,14 @@ import static org.opentripplanner.api.resource.networks.Routers.Q;
             return response;
         }
 
-        Place place_from = new Place(routingRequest.from.lng, routingRequest.from.lat, "");
-
-        Place place_to = new Place(routingRequest.to.lng, routingRequest.to.lat, "");
-
-        TripPlan plan = new TripPlan(place_from, place_to, routingRequest.getDateTime());
-
         //TODO: what about vertex1 It could also be a destination?
         router.toVertex = split.vertex0;
         router.route();
-        List<Integer> edges = router.getVisitedEdges();
-        Itinerary itinerary = new Itinerary();
-        Leg leg = new Leg();
-        leg.distance = 0.0;
-        leg.mode = TraverseMode.WALK.toString();
-        leg.from = place_from;
-        leg.to = place_to;
-        //Times are hardcoded for now since router doesn't support them.
-        Calendar calendar = Calendar.getInstance();
-        leg.startTime = calendar;
-        Calendar calendar1 = Calendar.getInstance();
-        calendar1.setTimeInMillis(leg.startTime.getTimeInMillis() + 336100);
-        leg.endTime = calendar1;
 
-        //TODO: Maybe this can be made better with streams
-        CoordinateArrayListSequence coordinates = new CoordinateArrayListSequence();
-        for (Integer i : edges) {
-            EdgeStore.Edge edge = otpServer.transportNetwork.streetLayer.edgeStore.getCursor(i);
-            leg.distance += edge.getLengthM();
+        List<TransportNetworkPath> paths = new ArrayList<>(1);
+        paths.add(new TransportNetworkPath(router.getLastState(), otpServer.transportNetwork));
 
-            LineString geometry = edge.getGeometry();
-
-            //LOG.info("Edge: {} (F:{}), geo:{}", edge, edge.isForward(), geometry);
-
-            if (geometry != null) {
-                if (coordinates.size() == 0) {
-                    coordinates.extend(geometry.getCoordinates());
-                } else {
-                    coordinates.extend(geometry.getCoordinates(), 1); // Avoid duplications
-                }
-            }
-        }
-        itinerary.walkDistance = leg.distance;
-
-        LineString geometry = GeometryUtils.getGeometryFactory().createLineString(coordinates);
-        leg.legGeometry = PolylineEncoder.createEncodings(geometry);
-        itinerary.addLeg(leg);
-        plan.addItinerary(itinerary);
-
+        TripPlan plan = TransportNetworkPathToTripPlanConverter.generatePlan(paths, routingRequest);
         response.setPlan(plan);
 
         return response;

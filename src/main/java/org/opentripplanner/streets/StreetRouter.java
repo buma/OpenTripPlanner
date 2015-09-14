@@ -8,7 +8,7 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
-import org.opentripplanner.transit.TransitLayer;
+import org.opentripplanner.transit.TransportNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +48,10 @@ public class StreetRouter {
 
     // If you set this to a non-negative number, the search will be directed toward that vertex .
     public int toVertex = ALL_VERTICES;
+
+    public State getLastState() {
+        return lastState;
+    }
 
     //Last state when target vertex was found
     private State lastState = null;
@@ -237,6 +241,20 @@ public class StreetRouter {
             this.vertex = atVertex;
             this.backEdge = viaEdge;
             this.backState = backState;
+        }
+
+        //TODO: actual time
+        public long getTimeInMillis() {
+            return getElapsedTimeSeconds()*1000;
+        }
+
+        //TODO: are all vertices in Street vertex store? What about transit stops?
+        public VertexStore.Vertex getVertex(TransportNetwork transportNetwork) {
+            return transportNetwork.streetLayer.vertexStore.getCursor(vertex);
+        }
+
+        public long getElapsedTimeSeconds() {
+            return (long)weight;
         }
     }
 
