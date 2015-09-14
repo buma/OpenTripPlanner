@@ -1,5 +1,6 @@
 package org.opentripplanner.index.model;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -37,10 +38,26 @@ public class StopShort {
         this.dist = distance;
     }
 
+    public StopShort(com.conveyal.gtfs.model.Stop stop) {
+        id = new AgencyAndId("UNKNOWN", stop.stop_id);
+        code = stop.stop_code;
+        name = stop.stop_name;
+        lat = stop.stop_lat;
+        lon = stop.stop_lon;
+        cluster = stop.parent_station;
+    }
+
     public static List<StopShort> list (Collection<Stop> in) {
         List<StopShort> out = Lists.newArrayList();
         for (Stop stop : in) out.add(new StopShort(stop));
         return out;
-    }    
+    }
 
+    public static List<StopShort> list_gtfs_stop(Collection<com.conveyal.gtfs.model.Stop> stops) {
+        List<StopShort> out = new ArrayList<>(stops.size());
+        for (com.conveyal.gtfs.model.Stop stop: stops) {
+            out.add(new StopShort(stop));
+        }
+        return out;
+    }
 }

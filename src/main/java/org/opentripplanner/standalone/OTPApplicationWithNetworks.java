@@ -23,6 +23,7 @@ import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import org.opentripplanner.api.common.OTPExceptionMapper;
 import org.opentripplanner.api.model.JSONObjectMapperProvider;
 import org.opentripplanner.api.resource.ServerInfo;
+import org.opentripplanner.api.resource.networks.IndexAPIResource;
 import org.opentripplanner.api.resource.networks.PlannerResource;
 import org.opentripplanner.api.resource.networks.Routers;
 import org.opentripplanner.api.resource.networks.TransportNetworkVisualizer;
@@ -86,6 +87,7 @@ public class OTPApplicationWithNetworks extends Application {
             ServerInfo.class,
             PlannerResource.class,
             TransportNetworkVisualizer.class,
+            IndexAPIResource.class,
 
             CorsFilter.class
         ));
