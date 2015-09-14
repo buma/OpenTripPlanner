@@ -1,7 +1,9 @@
 package org.opentripplanner.streets;
 
 import gnu.trove.list.TIntList;
+import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.list.array.TLongArrayList;
 import org.opentripplanner.util.WorldEnvelope;
 
 import java.io.Serializable;
@@ -17,11 +19,19 @@ public class VertexStore implements Serializable {
     public static final double FIXED_FACTOR = 1e7; // we could just reuse the constant from osm-lib Node.
     public TIntList fixedLats;
     public TIntList fixedLons;
+    public TLongList osmids;
     public WorldEnvelope envelope;
+
+    public static final long INVALID_OSM_ID = 0;
+
+    //This is generated osmId of vertices which are not from OSM
+    //OSMID is negative value of this number
+    private int createdVerticesId = 0;
 
     public VertexStore (int initialSize) {
         fixedLats = new TIntArrayList(initialSize);
         fixedLons = new TIntArrayList(initialSize);
+        osmids = new TLongArrayList(initialSize);
         envelope = new WorldEnvelope();
     }
 
@@ -29,19 +39,27 @@ public class VertexStore implements Serializable {
      * Add a vertex, specifying its coordinates in double-precision floating point degrees.
      * @return the index of the new vertex.
      */
-    public int addVertex (double lat, double lon) {
+    public int addVertex(double lat, double lon, long osmNodeId) {
         envelope.expandToInclude(lon, lat);
-        return addVertexFixed(floatingDegreesToFixed(lat), floatingDegreesToFixed(lon));
+        return addVertexFixed(floatingDegreesToFixed(lat), floatingDegreesToFixed(lon), osmNodeId);
     }
 
     /**
      * Add a vertex, specifying its coordinates in fixed-point lat and lon.
      * @return the index of the new vertex.
      */
-    public int addVertexFixed (int fixedLat, int fixedLon) {
+    public int addVertexFixed(int fixedLat, int fixedLon, long osmNodeId) {
         int vertexIndex = nVertices++;
         fixedLats.add(fixedLat);
         fixedLons.add(fixedLon);
+        if (osmNodeId == INVALID_OSM_ID) {
+            //This is for vertices which are created because of split roads
+            //We first increase the number because if we insert ID as 0 this means no value for TLongList
+            createdVerticesId++;
+            osmids.add(-createdVerticesId);
+        } else {
+            osmids.add(osmNodeId);
+        }
         return vertexIndex;
     }
 
