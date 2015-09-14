@@ -57,6 +57,9 @@ public class TransitLayer implements Serializable {
     //Which transit modes are used in this layer
     public HashSet<TraverseMode> transitModes;
 
+    //TransportNetwork timezone. It is read from GTFS agency. If it is invalid it is GMT
+    protected TimeZone timeZone;
+
     // TODO there is probably a better way to do this, but for now we need to retain stop object for linking to streets
     public transient List<Stop> stopForIndex = new ArrayList<>();
 
@@ -230,6 +233,37 @@ public class TransitLayer implements Serializable {
             .collect(Collectors.toList()));
 
         LOG.info("Found modes:{}", transitModes);
+
+        //Set transportNetwork timezone
+        //If there are no agencies (which is strange) it is GMT
+        //Otherwise it is set to first valid agency timezone and warning is shown if agencies have different timezones
+        if (gtfs.agency.size() == 0) {
+            timeZone = TimeZone.getTimeZone("GMT");
+            LOG.warn("graph contains no agencies; API request times will be interpreted as GMT.");
+        } else {
+            for (Agency agency : gtfs.agency.values()) {
+                if (agency.agency_timezone == null) {
+                    LOG.warn("Agency {} is without timezone", agency.agency_name);
+                    continue;
+                }
+                TimeZone tz = TimeZone.getTimeZone(agency.agency_timezone);
+                if (timeZone == null) {
+                    LOG.info("TransportNetwork time zone set to {} from agency {} and TZ:{}", tz,
+                        agency.agency_name, agency.agency_timezone);
+                    timeZone = tz;
+                } else if (!timeZone.equals(tz)) {
+                    LOG.error("agency time zone {} differs from TransportNetwork time zone: {}", tz,
+                        timeZone);
+                }
+            }
+
+            //This can only happen if all agencies have empty timezones
+            if (timeZone == null) {
+                timeZone = TimeZone.getTimeZone("GMT");
+                LOG.warn(
+                    "No agency in graph had valid timezone; API request times will be interpreted as GMT.");
+            }
+        }
 
         // Will be useful in naming patterns.
 //        LOG.info("Finding topology of each route/direction...");

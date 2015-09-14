@@ -17,6 +17,7 @@ import java.io.*;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Random;
+import java.util.TimeZone;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -250,6 +251,27 @@ public class TransportNetwork implements Serializable {
      */
     public LinkedPointSet getLinkedGridPointSet() {
         return getGridPointSet().link(streetLayer);
+    }
+
+    /**
+     * Gets timezone of this transportNetwork
+     *
+     * If transitLayer exists returns transitLayer timezone otherwise GMT
+     *
+     * It is never null
+     * @return TransportNetwork timezone
+     */
+    public TimeZone getTimeZone() {
+        if (transitLayer == null) {
+            LOG.warn("TransportNetwork transit layer isn't loaded;; API request times will be interpreted as GMT.");
+            return TimeZone.getTimeZone("GMT");
+        } else if (transitLayer.timeZone == null) {
+            LOG.error(
+                "TransportNetwork transit layer is but timezone is unknown;; API request times will be interpreted as GMT.");
+            return TimeZone.getTimeZone("GMT");
+        } else {
+            return transitLayer.timeZone;
+        }
     }
 
 }
