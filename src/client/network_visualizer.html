@@ -15,7 +15,7 @@
           restService: "otp_networks/routers",
           routerId: "default"
       };
-      var url = '/' + otp_config.restService + '/' + otp_config.routerId + '/';
+      var url = otp_config.hostname + '/' + otp_config.restService + '/' + otp_config.routerId + '/';
       function updateMap () {
         if (window.map.layers) {
           window.map.layers.forEach(function (layer) {
