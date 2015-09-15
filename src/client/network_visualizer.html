@@ -16,6 +16,15 @@
           routerId: "default"
       };
       var url = otp_config.hostname + '/' + otp_config.restService + '/' + otp_config.routerId + '/';
+
+      function onEachFeature(feature, layer) {
+          if (feature.properties) {
+              var prop = feature.properties;
+
+              layer.bindPopup("<p>NAME:"+ prop.name +"<br />OSMID:"+prop.osm_id+"<br />SPEED:"+prop.speed+"</p>");
+          }
+      }
+
       function updateMap () {
         if (window.map.layers) {
           window.map.layers.forEach(function (layer) {
@@ -30,7 +39,8 @@
             n : bbox.getNorth(),
             s : bbox.getSouth(),
             e : bbox.getEast(),
-            w : bbox.getWest()
+            w : bbox.getWest(),
+            detail: false //adds name, OSMID and speed as properties
         };
 
 
@@ -39,7 +49,13 @@
           data: params,
           url: url + 'visualize/streetEdges',
           success: function (data) {
-            window.map.layers.push(L.geoJson(data).addTo(window.map));
+              var layer = null;
+              if (params.detail == true) {
+                  layer = L.geoJson(data, {onEachFeature: onEachFeature});
+              } else {
+                  layer = L.geoJson(data);
+              }
+              layer.addTo(window.map);
           }
         });
       }

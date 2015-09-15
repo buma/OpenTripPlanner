@@ -59,6 +59,8 @@ import static org.opentripplanner.streets.VertexStore.floatingDegreesToFixed;
 
     @PathParam("layer") public String layer;
 
+    @QueryParam("detail") private boolean detail = false;
+
     @QueryParam("n") public Double north;
 
     @QueryParam("s") public Double south;
@@ -111,6 +113,11 @@ import static org.opentripplanner.streets.VertexStore.floatingDegreesToFixed;
                         gen.writeStartObject();
 
                         gen.writeObjectFieldStart("properties");
+                        if (detail) {
+                            gen.writeNumberField("osm_id", cursor.getOSMID());
+                            gen.writeStringField("name", cursor.getName());
+                            gen.writeNumberField("speed", cursor.getSpeed());
+                        }
                         gen.writeEndObject();
 
                         gen.writeStringField("type", "Feature");
