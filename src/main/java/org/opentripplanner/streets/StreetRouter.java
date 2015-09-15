@@ -8,6 +8,7 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
+import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.transit.TransportNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -255,6 +256,10 @@ public class StreetRouter {
 
         public long getElapsedTimeSeconds() {
             return (long)weight;
+        }
+
+        public EdgeStore.Edge getBackEdge(TransportNetwork transportNetwork) {
+            return transportNetwork.streetLayer.edgeStore.getCursor(backEdge);
         }
     }
 

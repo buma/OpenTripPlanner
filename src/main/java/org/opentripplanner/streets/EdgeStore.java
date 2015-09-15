@@ -19,6 +19,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Column store is better than struct simulation because 1. it is less fancy, 2. it is auto-resizing (not fixed size),
@@ -234,6 +235,14 @@ public class EdgeStore implements Serializable {
             return isBackward ? fromVertices.get(pairIndex) : toVertices.get(pairIndex);
         }
 
+        public VertexStore.Vertex getFromVertexAsVertex() {
+            return vertexStore.getCursor(getFromVertex());
+        }
+
+        public VertexStore.Vertex getToVertexAsVertex() {
+            return vertexStore.getCursor(getToVertex());
+        }
+
         /**
          * NOTE that this will have an effect on both edges in the bidirectional edge pair.
          */
@@ -444,6 +453,14 @@ public class EdgeStore implements Serializable {
 
         public String getName() {
             return osmids_names.get(getOSMID());
+        }
+
+        public String getName(Locale requestedLocale) {
+            return getName();
+        }
+
+        public boolean hasBogusName() {
+            return getName().equals(EMPTY_NAME);
         }
     }
 

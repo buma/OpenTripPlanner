@@ -14,12 +14,11 @@
 package org.opentripplanner.api.resource.networks;
 
 import com.conveyal.gtfs.model.Stop;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
-import org.opentripplanner.api.model.Itinerary;
-import org.opentripplanner.api.model.Leg;
-import org.opentripplanner.api.model.Place;
-import org.opentripplanner.api.model.TripPlan;
+import org.opentripplanner.api.model.*;
 import org.opentripplanner.api.resource.CoordinateArrayListSequence;
+import org.opentripplanner.common.geometry.DirectionUtils;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
@@ -37,10 +36,7 @@ import org.opentripplanner.util.PolylineEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Calendar;
-import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
+import java.util.*;
 
 /**
  * Created by mabu on 14.9.2015.
@@ -146,11 +142,132 @@ public class TransportNetworkPathToTripPlanConverter {
             itinerary.addLeg(generateLeg(transportNetwork, legStates, showIntermediateStops, requestedLocale));
         }
 
+        addWalkSteps(transportNetwork, itinerary.legs, legsStates, requestedLocale);
+
         itinerary.duration = lastState.getElapsedTimeSeconds();
         itinerary.startTime = makeCalendar(states[0], transportNetwork);
         itinerary.endTime = makeCalendar(lastState, transportNetwork);
 
         return itinerary;
+    }
+
+    /**
+     * Add a {@link WalkStep} {@link List} to a {@link Leg} {@link List}.
+     * It's more convenient to process all legs in one go because the previous step should be kept.
+     *
+     * @param legs       The legs of the itinerary
+     * @param legsStates The states that go with the legs
+     */
+    private static void addWalkSteps(TransportNetwork transportNetwork, List<Leg> legs,
+        StreetRouter.State[][] legsStates, Locale requestedLocale) {
+        WalkStep previousStep = null;
+
+        String lastMode = null;
+
+        for (int i = 0; i < legsStates.length; i++) {
+            List<WalkStep> walkSteps = generateWalkSteps(transportNetwork, legsStates[i],
+                previousStep, requestedLocale);
+            String legMode = legs.get(i).mode;
+            if (legMode != lastMode && !walkSteps.isEmpty()) {
+                walkSteps.get(0).newMode = legMode;
+                lastMode = legMode;
+            }
+
+            legs.get(i).walkSteps = walkSteps;
+
+            if (walkSteps.size() > 0) {
+                previousStep = walkSteps.get(walkSteps.size() - 1);
+            } else {
+                previousStep = null;
+            }
+        }
+    }
+
+    /**
+     * Converts a list of street edges to a list of turn-by-turn directions.
+     * <p>
+     * TODO: Currently it just returns steps and groups steps with same street name.
+     * It doesn't support anything else (Elevation, roundabouts, stay on vs turning even if street name is the same)
+     *
+     * @param previous a non-transit leg that immediately precedes this one (bike-walking, say), or null
+     * @return
+     */
+    private static List<WalkStep> generateWalkSteps(TransportNetwork transportNetwork,
+        StreetRouter.State[] states, WalkStep previousStep, Locale requestedLocale) {
+        List<WalkStep> steps = new ArrayList<WalkStep>();
+        WalkStep step = null;
+        double lastAngle = 0, distance = 0; // distance used for appending elevation profiles
+        for (int i = 0; i < states.length - 1; i++) {
+            StreetRouter.State backState = states[i];
+            StreetRouter.State forwardState = states[i + 1];
+
+            EdgeStore.Edge edge = forwardState.getBackEdge(transportNetwork);
+
+            boolean createdNewStep = false;
+
+            Geometry geom = edge.getGeometry();
+            if (geom == null) {
+                continue;
+            }
+
+            String streetName = edge.getName(requestedLocale);
+            int idx = streetName.indexOf('(');
+            String streetNameNoParens;
+            if (idx > 0)
+                streetNameNoParens = streetName.substring(0, idx - 1);
+            else
+                streetNameNoParens = streetName;
+
+            if (step == null) {
+                // first step
+                step = createWalkStep(transportNetwork, forwardState, requestedLocale);
+                createdNewStep = true;
+
+                steps.add(step);
+                double thisAngle = DirectionUtils.getFirstAngle(geom);
+                if (previousStep == null) {
+                    step.setAbsoluteDirection(thisAngle);
+                    step.relativeDirection = RelativeDirection.DEPART;
+                } else {
+                    step.setDirections(previousStep.angle, thisAngle, false);
+                }
+                // new step, set distance to length of first edge
+                distance = edge.getLengthM();
+            } else if (streetNameNoParens.equals(step.streetName)) {
+                //Street name is the same
+                createdNewStep = false;
+            } else {
+                step = createWalkStep(transportNetwork, forwardState, requestedLocale);
+                createdNewStep = true;
+                steps.add(step);
+                double thisAngle = DirectionUtils.getFirstAngle(geom);
+                step.setDirections(lastAngle, thisAngle, false);
+                distance = edge.getLengthM();
+            }
+            step.distance += edge.getLengthM();
+            lastAngle = DirectionUtils.getLastAngle(geom);
+        }
+
+        return steps;
+    }
+
+    private static WalkStep createWalkStep(TransportNetwork transportNetwork, StreetRouter.State s,
+        Locale requestedLocale) {
+        EdgeStore.Edge en = s.getBackEdge(transportNetwork);
+        WalkStep step;
+        step = new WalkStep();
+        step.streetName = en.getName(requestedLocale);
+        step.lon = en.getFromVertexAsVertex().getLon();
+        step.lat = en.getFromVertexAsVertex().getLat();
+        //TODO: elevation, alerts, if it is area support
+        //step.elevation = encodeElevationProfile(s.getBackEdge(), 0);
+        step.bogusName = en.hasBogusName();
+        //((step.addAlerts(graph.streetNotesService.getNotes(s), wantedLocale);
+        step.angle = DirectionUtils.getFirstAngle(en.getGeometry());
+        /*if (s.getBackEdge(transportNetwork) instanceof AreaEdge) {
+            step.area = true;
+        }*/
+        return step;
     }
 
     /**
