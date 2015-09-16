@@ -2,6 +2,7 @@ package org.opentripplanner.standalone;
 
 import org.opentripplanner.graph_builder.services.osm.CustomNamer;
 import org.opentripplanner.routing.impl.DefaultFareServiceFactory;
+import org.opentripplanner.routing.impl.SpeedsFactory;
 import org.opentripplanner.routing.services.FareServiceFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -93,6 +94,11 @@ public class GraphBuilderParameters {
     public final FareServiceFactory fareServiceFactory;
 
     /**
+     * Specifier for way speeds
+     */
+    public final SpeedsFactory speedsFactory;
+
+    /**
      * A custom OSM namer to use.
      */
     public final CustomNamer customNamer;
@@ -138,6 +144,7 @@ public class GraphBuilderParameters {
         staticParkAndRide = config.path("staticParkAndRide").asBoolean(true);
         staticBikeParkAndRide = config.path("staticBikeParkAndRide").asBoolean(false);
         maxHtmlAnnotationsPerFile = config.path("maxHtmlAnnotationsPerFile").asInt(1000);
+        speedsFactory = SpeedsFactory.fromConfig(config.path("speeds"));
     }
 
 }
