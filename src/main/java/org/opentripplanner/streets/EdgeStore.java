@@ -171,7 +171,7 @@ public class EdgeStore implements Serializable {
      * @return a cursor pointing to the forward edge in the pair, which always has an even index.
      */
     public Edge addStreetPair(int beginVertexIndex, int endVertexIndex, int edgeLengthMillimeters,
-        long osmID, String name) {
+        long osmID, String name, int streetMaxSpeedForward, int streetMaxSpeedBackward) {
 
         // Store only one length, set of endpoints, and intermediate geometry per pair of edges.
         lengths_mm.add(edgeLengthMillimeters);
@@ -187,11 +187,11 @@ public class EdgeStore implements Serializable {
         osmids_names.put(osmID, name);
 
         // Forward edge
-        speeds.add(DEFAULT_SPEED_KPH);
+        speeds.add(streetMaxSpeedForward);
         flags.add(0);
 
         // Backward edge
-        speeds.add(DEFAULT_SPEED_KPH);
+        speeds.add(streetMaxSpeedBackward);
         flags.add(0);
 
         // Increment total number of edges created so far, and return the index of the first new edge.

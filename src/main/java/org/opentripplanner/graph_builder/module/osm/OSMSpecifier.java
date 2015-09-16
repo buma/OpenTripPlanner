@@ -18,6 +18,7 @@ import java.util.List;
 
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
+import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 
 /**
  * Specifies a class of OSM tagged entities (e.g. ways) by a list of tags and their values (which may be wildcards).
@@ -98,7 +99,7 @@ public class OSMSpecifier {
      * Calculates a score expressing how well an OSM entity's tags match this specifier.
      * This does exactly the same thing as matchScores but without regard for :left and :right.
      */
-    public int matchScore(OSMWithTags match) {
+    public int matchScore(IOSMWithTags match) {
         int score = 0;
         int matches = 0;
         for (P2<String> pair : kvpairs) {

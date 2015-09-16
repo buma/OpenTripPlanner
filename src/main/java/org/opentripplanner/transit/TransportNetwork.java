@@ -1,11 +1,14 @@
 package org.opentripplanner.transit;
 
 import com.conveyal.osmlib.OSM;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.vividsolutions.jts.geom.Coordinate;
 import org.nustaq.serialization.FSTObjectInput;
 import org.nustaq.serialization.FSTObjectOutput;
 import org.opentripplanner.analyst.PointSet;
+import org.opentripplanner.reflect.ReflectionLibrary;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.standalone.GraphBuilderParameters;
 import org.opentripplanner.streets.LinkedPointSet;
 import org.opentripplanner.streets.StreetLayer;
 import org.opentripplanner.streets.StreetRouter;
@@ -59,7 +62,7 @@ public class TransportNetwork implements Serializable {
     public static void main (String[] args) {
         // Round-trip serialize the transit layer and test its speed after deserialization.
         // TransportNetwork transportNetwork = TransportNetwork.fromFiles(args[0], args[1]);
-        TransportNetwork transportNetwork = TransportNetwork.fromDirectory(new File("."));
+        TransportNetwork transportNetwork = TransportNetwork.fromDirectory(new File("."), null);
 
         try {
             OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("network.dat"));
@@ -86,15 +89,22 @@ public class TransportNetwork implements Serializable {
      * On the other hand, GTFS feeds each have their own namespace. Each GTFS object is for one specific feed, and this
      * distinction should be maintained for various reasons.
      */
-    public static TransportNetwork fromFiles (String osmSourceFile, String gtfsSourceFile) {
+    public static TransportNetwork fromFiles(String osmSourceFile, String gtfsSourceFile,
+        GraphBuilderParameters builderParameters) {
 
         // Load OSM data into MapDB
         OSM osm = new OSM(null);
         osm.intersectionDetection = true;
         osm.readFromFile(osmSourceFile);
 
+        GraphBuilderParameters graphBuilderParameters = builderParameters;
+
+        if (graphBuilderParameters == null) {
+            graphBuilderParameters = new GraphBuilderParameters(MissingNode.getInstance());
+        }
+
         // Make street layer from OSM data in MapDB
-        StreetLayer streetLayer = new StreetLayer();
+        StreetLayer streetLayer = new StreetLayer(builderParameters);
         streetLayer.loadFromOsm(osm);
         osm.close();
 
@@ -119,7 +129,7 @@ public class TransportNetwork implements Serializable {
         return transportNetwork;
     }
 
-    public static TransportNetwork fromDirectory (File directory) {
+    public static TransportNetwork fromDirectory (File directory, GraphBuilderParameters builderParameters) {
         File osmFile = null;
         File gtfsFile = null;
         for (File file : directory.listFiles()) {
@@ -147,7 +157,7 @@ public class TransportNetwork implements Serializable {
                     LOG.warn("Skipping non-input file '{}'", file);
             }
         }
-        return fromFiles(osmFile.getAbsolutePath(), gtfsFile.getAbsolutePath());
+        return fromFiles(osmFile.getAbsolutePath(), gtfsFile.getAbsolutePath(), builderParameters);
     }
 
     public void makeEnvelope() {

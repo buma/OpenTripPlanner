@@ -13,17 +13,14 @@
 
 package org.opentripplanner.graph_builder.module.osm;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.common.model.T2;
+import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
 import org.opentripplanner.routing.alertpatch.Alert;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
@@ -199,7 +196,7 @@ public class WayPropertySet {
     /**
      * Calculate the automobile speed, in meters per second, for this way.
      */
-    public float getCarSpeedForWay(OSMWithTags way, boolean back) {
+    public float getCarSpeedForWay(IOSMWithTags way, boolean back) {
         // first, check for maxspeed tags
         Float speed = null;
         Float currentSpeed;
@@ -360,5 +357,9 @@ public class WayPropertySet {
             return null;
         
         return metersSecond;
+    }
+
+    public List<SpeedPicker> getSpeedPickers() {
+        return Collections.unmodifiableList(speedPickers);
     }
 }

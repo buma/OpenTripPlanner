@@ -13,7 +13,7 @@ public class StreetLayerTest extends TestCase {
         osm.intersectionDetection = true;
         osm.readFromUrl(StreetLayerTest.class.getResource("subgraph.vex").toString());
 
-        StreetLayer sl = new StreetLayer();
+        StreetLayer sl = new StreetLayer(null);
         // load from OSM and don't remove floating subgraphs
         sl.loadFromOsm(osm, false, true);
 

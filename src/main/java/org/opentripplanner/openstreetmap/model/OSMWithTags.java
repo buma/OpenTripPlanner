@@ -27,7 +27,7 @@ import org.opentripplanner.util.TranslatedString;
  * A base class for OSM entities containing common methods.
  */
 
-public class OSMWithTags {
+public class OSMWithTags implements IOSMWithTags {
 
     /* To save memory this is only created when an entity actually has tags. */
     private Map<String, String> _tags;

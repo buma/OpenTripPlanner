@@ -85,7 +85,7 @@ public class TransportNetworkCache {
 
         // Now we have a local copy of these graph inputs. Make a graph out of them.
         CommandLineParameters params = new CommandLineParameters();
-        currentNetwork = TransportNetwork.fromDirectory(new File(CACHE_DIR, networkId));
+        currentNetwork = TransportNetwork.fromDirectory(new File(CACHE_DIR, networkId), null);
         currentNetworkId = networkId;
         // TODO Save the built graph on S3 for other workers to use.
         return currentNetwork;

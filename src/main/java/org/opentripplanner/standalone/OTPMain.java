@@ -132,7 +132,13 @@ public class OTPMain {
 
             if (params.transitNetworks) {
                 LOG.info("Building transit networks.");
-                otpServerWithNetworks.transportNetwork = TransportNetwork.fromDirectory(params.build);
+                //TODO: for now builder config is read twice. Once in graph builder and once in transitNetwork
+                JsonNode builderConfig = null;
+                // Find and parse config files first to reveal syntax errors early without waiting for graph build.
+                builderConfig = OTPMain.loadJson(new File(params.build, GraphBuilder.BUILDER_CONFIG_FILENAME));
+                GraphBuilderParameters builderParams = new GraphBuilderParameters(builderConfig);
+                //LOG.info(ReflectionLibrary.dumpFields(builderParams));
+                otpServerWithNetworks.transportNetwork = TransportNetwork.fromDirectory(params.build, builderParams);
                 otpServerWithNetworks.transportNetwork.makeEnvelope();
                 //In memory doesn't save it to disk others do (build, preFlight)
                 if (!params.inMemory) {

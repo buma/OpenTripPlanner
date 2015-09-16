@@ -4,6 +4,7 @@ import com.conveyal.gtfs.model.Stop;
 import com.conveyal.osmlib.Node;
 import com.conveyal.osmlib.OSM;
 import com.conveyal.osmlib.Way;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
@@ -13,6 +14,9 @@ import gnu.trove.map.hash.TLongIntHashMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.openstreetmap.model.IOSMWithTags;
+import org.opentripplanner.reflect.ReflectionLibrary;
+import org.opentripplanner.standalone.GraphBuilderParameters;
 import org.opentripplanner.transit.TransitLayer;
 import org.opentripplanner.util.WorldEnvelope;
 import org.slf4j.Logger;
@@ -74,7 +78,20 @@ public class StreetLayer implements Serializable {
     transient Histogram edgesPerWayHistogram = new Histogram("Number of edges per way per direction");
     transient Histogram pointsPerEdgeHistogram = new Histogram("Number of geometry points per edge");
 
+    transient GraphBuilderParameters builderParameters;
+
     public TransitLayer linkedTransitLayer = null;
+
+    public StreetLayer(GraphBuilderParameters builderParameters) {
+        //It can be null only in tests
+        if (builderParameters == null) {
+            builderParameters = new GraphBuilderParameters(MissingNode.getInstance());
+            LOG.info("Builder config not found using default values");
+            LOG.info(ReflectionLibrary.dumpFields(builderParameters));
+
+        }
+        this.builderParameters = builderParameters;
+    }
 
     /** Load street layer from an OSM-lib OSM DB */
     public void loadFromOsm(OSM osm) {
@@ -164,6 +181,11 @@ public class StreetLayer implements Serializable {
      */
     private void makeEdge(Way way, int beginIdx, int endIdx, Long osmID) {
 
+        OSMWay osmWay = new OSMWay(way);
+
+        int streetMaxSpeedForward = (int)(builderParameters.speedsFactory.getProps().getCarSpeedForWay(osmWay, false) * VertexStore.FIXED_FACTOR);
+        int streetMaxSpeedBackward = (int)(builderParameters.speedsFactory.getProps().getCarSpeedForWay(osmWay, true) * VertexStore.FIXED_FACTOR);
+
         long beginOsmNodeId = way.nodes[beginIdx];
         long endOsmNodeId = way.nodes[endIdx];
 
@@ -190,7 +212,7 @@ public class StreetLayer implements Serializable {
         String name = way.getTag("name");
 
         // Create and store the forward and backward edge
-        EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex, edgeLengthMillimeters, osmID, name);
+        EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex, edgeLengthMillimeters, osmID, name, streetMaxSpeedForward, streetMaxSpeedBackward);
         newForwardEdge.setGeometry(nodes);
         pointsPerEdgeHistogram.add(nNodes);
 
@@ -306,7 +328,8 @@ public class StreetLayer implements Serializable {
         // Make a second, new bidirectional edge pair after the split and add it to the spatial index.
         // New edges will be added to edge lists later (the edge list is a transient index).
         EdgeStore.Edge newEdge = edgeStore.addStreetPair(newVertexIndex, oldToVertex, split.distance1_mm,
-            edge.getOSMID(), edge.getName());
+            edge.getOSMID(), edge.getName(), edge.getSpeed(), edge.getSpeed());
+        //FIXME: Here it is probably an error to give same speed to forward and backward edge.Backward should get speed from backward edge
         spatialIndex.insert(newEdge.getEnvelope(), newEdge.edgeIndex);
         // TODO newEdge.copyFlagsFrom(edge) to match the existing edge...
         return newVertexIndex;
@@ -438,5 +461,17 @@ public class StreetLayer implements Serializable {
 
     public WorldEnvelope getEnvelope() {
         return this.vertexStore.envelope;
+    }
+
+    //This class just basically wraps way for now because all specifiers for speeds and permissions expects OSMWithTags
+    //Way basically implements needed function but its type is incompatible.
+    //So OSMWAY implements IOSMWithTags, same as OSMWithTags
+    //When Graph is removed this won't be used anymore because OSMEntity function will be called instead of OSMWithTags.
+    private class OSMWay extends Way implements IOSMWithTags {
+
+        public OSMWay(Way way) {
+            this.nodes = way.nodes;
+            this.tags = way.tags;
+        }
     }
 }
