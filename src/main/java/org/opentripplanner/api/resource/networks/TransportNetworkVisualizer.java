@@ -18,6 +18,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vividsolutions.jts.geom.Envelope;
 import gnu.trove.set.TIntSet;
+import org.opentripplanner.inspector.DefaultScalarColorPalette;
+import org.opentripplanner.inspector.ScalarColorPalette;
 import org.opentripplanner.standalone.OTPServerWithNetworks;
 import org.opentripplanner.streets.EdgeStore;
 import org.opentripplanner.streets.VertexStore;
@@ -25,17 +27,22 @@ import org.opentripplanner.transit.TransportNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.measure.converter.UnitConverter;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
 import static org.opentripplanner.api.resource.networks.Routers.Q;
 import static org.opentripplanner.streets.VertexStore.floatingDegreesToFixed;
+
+import static javax.measure.unit.SI.METERS_PER_SECOND;
+import static javax.measure.unit.NonSI.KILOMETERS_PER_HOUR;
 
 /**
  * Simple Web-based visualizer for transport networks.
@@ -48,6 +55,8 @@ import static org.opentripplanner.streets.VertexStore.floatingDegreesToFixed;
 
     //Context with some kind of data is missing.
     @Context OTPServerWithNetworks otpServerWithNetworks;
+
+    private static final UnitConverter unitConverter = METERS_PER_SECOND.getConverterTo(KILOMETERS_PER_HOUR);
 
     /**
      * The routerId selects between several graphs on the same server. The routerId is pulled from
@@ -68,6 +77,9 @@ import static org.opentripplanner.streets.VertexStore.floatingDegreesToFixed;
     @QueryParam("e") public Double east;
 
     @QueryParam("w") public Double west;
+
+    //Gets colors for speeds in km/h
+    private ScalarColorPalette palette = new DefaultScalarColorPalette(10.0, 90.0, 130.0);
 
     @GET @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML + Q,
         MediaType.TEXT_XML + Q }) public Response visualize() {
@@ -116,7 +128,16 @@ import static org.opentripplanner.streets.VertexStore.floatingDegreesToFixed;
                         if (detail) {
                             gen.writeNumberField("osm_id", cursor.getOSMID());
                             gen.writeStringField("name", cursor.getName());
-                            gen.writeNumberField("speed", cursor.getSpeed());
+                            double speedMs = cursor.getSpeed() / VertexStore.FIXED_FACTOR;
+                            Color color = palette
+                                .getColor(Math.round(unitConverter.convert(speedMs)));
+                            String hexColor = String
+                                .format("#%02x%02x%02x", color.getRed(), color.getGreen(),
+                                    color.getBlue());
+                            gen.writeStringField("speed",
+                                String.format("%.2f km/h", unitConverter.convert(speedMs)));
+                            //gen.writeNumberField("speed_ms", speedMs);
+                            gen.writeStringField("color", hexColor);
                         }
                         gen.writeEndObject();
 

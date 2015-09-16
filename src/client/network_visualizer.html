@@ -25,6 +25,13 @@
           }
       }
 
+      function styleSpeed(feature) {
+          return {
+              color: feature.properties.color
+          };
+      }
+
+
       function updateMap () {
         if (window.map.layers) {
           window.map.layers.forEach(function (layer) {
@@ -51,7 +58,8 @@
           success: function (data) {
               var layer = null;
               if (params.detail == true) {
-                  layer = L.geoJson(data, {onEachFeature: onEachFeature});
+                  layer = L.geoJson(data, {onEachFeature: onEachFeature,
+                                    style: styleSpeed});
               } else {
                   layer = L.geoJson(data);
               }
