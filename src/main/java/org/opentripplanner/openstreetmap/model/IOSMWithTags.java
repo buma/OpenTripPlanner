@@ -36,6 +36,16 @@ public interface IOSMWithTags {
 
     boolean doesTagAllowAccess(String tag);
 
+    /**
+     * Determines if a tag contains a false value. 'no', 'false', and '0' are considered false.
+     */
+    boolean isTagFalse(String tag);
+
+    /**
+     * Determines if a tag contains a true value. 'yes', 'true', and '1' are considered true.
+     */
+    boolean isTagTrue(String tag);
+
     static boolean isFalse(String tagValue) {
         return ("no".equals(tagValue) || "0".equals(tagValue) || "false".equals(tagValue));
     }

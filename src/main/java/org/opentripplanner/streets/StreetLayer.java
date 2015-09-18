@@ -182,8 +182,10 @@ public class StreetLayer implements Serializable {
 
         OSMWay osmWay = new OSMWay(way);
 
-        int streetMaxSpeedForward = (int)(builderParameters.speedsFactory.getProps().getCarSpeedForWay(osmWay, false) * VertexStore.FIXED_FACTOR);
-        int streetMaxSpeedBackward = (int)(builderParameters.speedsFactory.getProps().getCarSpeedForWay(osmWay, true) * VertexStore.FIXED_FACTOR);
+        int streetMaxSpeedForward = (int)(builderParameters.speedsFactory.getProps().getCarSpeedForWay(
+            osmWay, false) * VertexStore.FIXED_FACTOR);
+        int streetMaxSpeedBackward = (int)(builderParameters.speedsFactory.getProps().getCarSpeedForWay(
+            osmWay, true) * VertexStore.FIXED_FACTOR);
 
         long beginOsmNodeId = way.nodes[beginIdx];
         long endOsmNodeId = way.nodes[endIdx];

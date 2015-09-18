@@ -14,45 +14,35 @@ along with this program. If not, see <http://www.gnu.org/licenses/>. */
 package org.opentripplanner.streets;
 
 import com.conveyal.osmlib.Way;
-import org.opentripplanner.openstreetmap.model.IOSMWithTags;
+
+import java.util.Arrays;
 
 /**
  * Created by mabu on 18.9.2015.
- */ //This class just basically wraps way for now because all specifiers for speeds and permissions expects OSMWithTags
-//Way basically implements needed function but its type is incompatible.
-//So OSMWAY implements IOSMWithTags, same as OSMWithTags
-//When Graph is removed this won't be used anymore because OSMEntity function will be called instead of OSMWithTags.
-class OSMWay extends Way implements IOSMWithTags {
+ */
+public class OSMWay extends OSMEntityWithTags {
+    public long[] nodes;
 
     public OSMWay(Way way) {
+        super(way);
         this.nodes = way.nodes;
-        this.tags = way.tags;
     }
 
-    /**
-     * Checks is a tag contains the specified value.
-     *
-     * @param tag
-     * @param value
-     */
-    @Override public boolean isTag(String tag, String value) {
-        if (!hasNoTags()) {
-            String tagValue = getTag(tag);
-            if (tagValue != null)
-                return value.equals(tagValue);
-        }
-
-        return false;
+    @Override
+    public String toString() {
+        return String.format("Way with %d tags and %d nodes", tags.size(), nodes.length);
     }
 
-    @Override public boolean doesTagAllowAccess(String tag) {
-        if (hasNoTags()) {
-            return false;
-        }
-        if (tagIsTrue(tag)) {
-            return true;
-        }
-        String value = getTag(tag);
-        return IOSMWithTags.isTagAccessAllowed(value);
+    @Override
+    public Type getType() {
+        return Type.WAY;
     }
+
+    @Override
+    public boolean equals(Object other) {
+        if ( ! (other instanceof Way)) return false;
+        Way otherWay = (Way) other;
+        return Arrays.equals(this.nodes, otherWay.nodes) && this.tagsEqual(otherWay);
+    }
+
 }
