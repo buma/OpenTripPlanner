@@ -96,7 +96,7 @@ public class OSMWay extends OSMWithTags {
      */
     public boolean isOneWayForwardBicycle() {
         String oneWayBicycle = getTag("oneway:bicycle");
-        return isTrue(oneWayBicycle) || isTagFalse("bicycle:backwards");
+        return IOSMWithTags.isTrue(oneWayBicycle) || isTagFalse("bicycle:backwards");
     }
 
     /**

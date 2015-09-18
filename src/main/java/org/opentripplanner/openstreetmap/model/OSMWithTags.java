@@ -96,7 +96,7 @@ public class OSMWithTags implements IOSMWithTags {
         if (_tags == null)
             return false;
 
-        return isFalse(getTag(tag));
+        return IOSMWithTags.isFalse(getTag(tag));
     }
 
     /**
@@ -107,7 +107,7 @@ public class OSMWithTags implements IOSMWithTags {
         if (_tags == null)
             return false;
 
-        return isTrue(getTag(tag));
+        return IOSMWithTags.isTrue(getTag(tag));
     }
 
     public boolean doesTagAllowAccess(String tag) {
@@ -119,8 +119,7 @@ public class OSMWithTags implements IOSMWithTags {
         }
         tag = tag.toLowerCase();
         String value = getTag(tag);
-        return ("designated".equals(value) || "official".equals(value)
-                || "permissive".equals(value) || "unknown".equals(value));
+        return IOSMWithTags.isTagAccessAllowed(value);
     }
 
     /** @return a tag's value, converted to lower case. */
@@ -135,7 +134,7 @@ public class OSMWithTags implements IOSMWithTags {
     /**
      * Checks is a tag contains the specified value.
      */
-    public Boolean isTag(String tag, String value) {
+    public boolean isTag(String tag, String value) {
         tag = tag.toLowerCase();
         if (_tags != null && _tags.containsKey(tag) && value != null)
             return value.equals(_tags.get(tag));
@@ -178,151 +177,6 @@ public class OSMWithTags implements IOSMWithTags {
         if (out.isEmpty())
             return null;
         return out;
-    }
-
-    public static boolean isFalse(String tagValue) {
-        return ("no".equals(tagValue) || "0".equals(tagValue) || "false".equals(tagValue));
-    }
-
-    public static boolean isTrue(String tagValue) {
-        return ("yes".equals(tagValue) || "1".equals(tagValue) || "true".equals(tagValue));
-    }
-
-    /**
-     * Returns true if this element is under construction.
-     * 
-     * @return
-     */
-    public boolean isUnderConstruction() {
-        String highway = getTag("highway");
-        String cycleway = getTag("cycleway");
-        return "construction".equals(highway) || "construction".equals(cycleway);
-    }
-
-    /**
-     * Returns true if this tag is explicitly access to this entity.
-     * 
-     * @param tagName
-     * @return
-     */
-    private boolean isTagDeniedAccess(String tagName) {
-        String tagValue = getTag(tagName);
-        return "no".equals(tagValue) || "license".equals(tagValue);
-    }
-
-    /**
-     * Returns true if access is generally denied to this element (potentially with exceptions).
-     * 
-     * @return
-     */
-    public boolean isGeneralAccessDenied() {
-        return isTagDeniedAccess("access");
-    }
-
-    /**
-     * Returns true if cars are explicitly denied access.
-     * 
-     * @return
-     */
-    public boolean isMotorcarExplicitlyDenied() {
-        return isTagDeniedAccess("motorcar");
-    }
-
-    /**
-     * Returns true if cars are explicitly allowed.
-     * 
-     * @return
-     */
-    public boolean isMotorcarExplicitlyAllowed() {
-        return doesTagAllowAccess("motorcar");
-    }
-
-    /**
-     * Returns true if cars/motorcycles/HGV are explicitly denied access.
-     *
-     * @return
-     */
-    public boolean isMotorVehicleExplicitlyDenied() {
-        return isTagDeniedAccess("motor_vehicle");
-    }
-
-    /**
-     * Returns true if cars/motorcycles/HGV are explicitly allowed.
-     *
-     * @return
-     */
-    public boolean isMotorVehicleExplicitlyAllowed() {
-        return doesTagAllowAccess("motor_vehicle");
-    }
-
-
-    /**
-     * Returns true if bikes are explicitly denied access.
-     * 
-     * bicycle is denied if bicycle:no, bicycle:license or bicycle:use_sidepath
-     * @return
-     */
-    public boolean isBicycleExplicitlyDenied() {
-        return isTagDeniedAccess("bicycle") || "use_sidepath".equals(getTag("bicycle"));
-    }
-
-    /**
-     * Returns true if bikes are explicitly allowed.
-     * 
-     * @return
-     */
-    public boolean isBicycleExplicitlyAllowed() {
-        return doesTagAllowAccess("bicycle");
-    }
-
-    /**
-     * Returns true if pedestrians are explicitly denied access.
-     * 
-     * @return
-     */
-    public boolean isPedestrianExplicitlyDenied() {
-        return isTagDeniedAccess("foot");
-    }
-
-    /**
-     * Returns true if pedestrians are explicitly allowed.
-     * 
-     * @return
-     */
-    public boolean isPedestrianExplicitlyAllowed() {
-        return doesTagAllowAccess("foot");
-    }
-
-    /**
-     * Returns true if through traffic is not allowed.
-     * 
-     * @return
-     */
-    public boolean isThroughTrafficExplicitlyDisallowed() {
-        String access = getTag("access");
-        boolean noThruTraffic = "destination".equals(access) || "private".equals(access)
-                || "customers".equals(access) || "delivery".equals(access)
-                || "forestry".equals(access) || "agricultural".equals(access);
-        return noThruTraffic;
-    }
-    
-    /**
-     * @return True if this node / area is a park and ride.
-     */
-    public boolean isParkAndRide() {
-        String parkingType = getTag("parking");
-        String parkAndRide = getTag("park_ride");
-        return isTag("amenity", "parking")
-                && (parkingType != null && parkingType.contains("park_and_ride"))
-                || (parkAndRide != null && !parkAndRide.equalsIgnoreCase("no"));
-    }
-
-    /**
-     * @return True if this node / area is a bike parking.
-     */
-    public boolean isBikeParking() {
-        return isTag("amenity", "bicycle_parking") && !isTag("access", "private")
-                && !isTag("access", "no");
     }
 
     public void setCreativeName(I18NString creativeName) {

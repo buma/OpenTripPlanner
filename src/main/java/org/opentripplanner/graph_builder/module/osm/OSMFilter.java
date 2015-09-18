@@ -15,6 +15,7 @@ package org.opentripplanner.graph_builder.module.osm;
 
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.graph_builder.annotation.ConflictingBikeTags;
+import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 import org.opentripplanner.openstreetmap.model.OSMWay;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -214,7 +215,7 @@ public class OSMFilter {
 
         // TODO(flamholz): figure out what this is for.
         String oneWayBicycle = way.getTag("oneway:bicycle");
-        if (OSMWithTags.isFalse(oneWayBicycle) || way.isTagTrue("bicycle:backwards")) {
+        if (IOSMWithTags.isFalse(oneWayBicycle) || way.isTagTrue("bicycle:backwards")) {
             if (permissions.allows(StreetTraversalPermission.BICYCLE)) {
                 permissionsFront = permissionsFront.add(StreetTraversalPermission.BICYCLE);
                 permissionsBack = permissionsBack.add(StreetTraversalPermission.BICYCLE);

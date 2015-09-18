@@ -43,30 +43,30 @@ public class OSMWithTagsTest {
     
     @Test
     public void testIsFalse() {
-        assertTrue(OSMWithTags.isFalse("no"));
-        assertTrue(OSMWithTags.isFalse("0"));
-        assertTrue(OSMWithTags.isFalse("false"));
+        assertTrue(IOSMWithTags.isFalse("no"));
+        assertTrue(IOSMWithTags.isFalse("0"));
+        assertTrue(IOSMWithTags.isFalse("false"));
         
-        assertFalse(OSMWithTags.isFalse("yes"));
-        assertFalse(OSMWithTags.isFalse("1"));
-        assertFalse(OSMWithTags.isFalse("true"));
-        assertFalse(OSMWithTags.isFalse("foo"));
-        assertFalse(OSMWithTags.isFalse("bar"));
-        assertFalse(OSMWithTags.isFalse("baz"));
+        assertFalse(IOSMWithTags.isFalse("yes"));
+        assertFalse(IOSMWithTags.isFalse("1"));
+        assertFalse(IOSMWithTags.isFalse("true"));
+        assertFalse(IOSMWithTags.isFalse("foo"));
+        assertFalse(IOSMWithTags.isFalse("bar"));
+        assertFalse(IOSMWithTags.isFalse("baz"));
     }
  
     @Test
     public void testIsTrue() {
-        assertTrue(OSMWithTags.isTrue("yes"));
-        assertTrue(OSMWithTags.isTrue("1"));
-        assertTrue(OSMWithTags.isTrue("true"));
+        assertTrue(IOSMWithTags.isTrue("yes"));
+        assertTrue(IOSMWithTags.isTrue("1"));
+        assertTrue(IOSMWithTags.isTrue("true"));
         
-        assertFalse(OSMWithTags.isTrue("no"));
-        assertFalse(OSMWithTags.isTrue("0"));
-        assertFalse(OSMWithTags.isTrue("false"));
-        assertFalse(OSMWithTags.isTrue("foo"));
-        assertFalse(OSMWithTags.isTrue("bar"));
-        assertFalse(OSMWithTags.isTrue("baz"));
+        assertFalse(IOSMWithTags.isTrue("no"));
+        assertFalse(IOSMWithTags.isTrue("0"));
+        assertFalse(IOSMWithTags.isTrue("false"));
+        assertFalse(IOSMWithTags.isTrue("foo"));
+        assertFalse(IOSMWithTags.isTrue("bar"));
+        assertFalse(IOSMWithTags.isTrue("baz"));
     }
     
     @Test

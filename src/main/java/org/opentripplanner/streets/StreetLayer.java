@@ -14,7 +14,6 @@ import gnu.trove.map.hash.TLongIntHashMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 import org.opentripplanner.reflect.ReflectionLibrary;
 import org.opentripplanner.standalone.GraphBuilderParameters;
 import org.opentripplanner.transit.TransitLayer;
@@ -463,15 +462,4 @@ public class StreetLayer implements Serializable {
         return this.vertexStore.envelope;
     }
 
-    //This class just basically wraps way for now because all specifiers for speeds and permissions expects OSMWithTags
-    //Way basically implements needed function but its type is incompatible.
-    //So OSMWAY implements IOSMWithTags, same as OSMWithTags
-    //When Graph is removed this won't be used anymore because OSMEntity function will be called instead of OSMWithTags.
-    private class OSMWay extends Way implements IOSMWithTags {
-
-        public OSMWay(Way way) {
-            this.nodes = way.nodes;
-            this.tags = way.tags;
-        }
-    }
 }
