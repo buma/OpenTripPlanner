@@ -15,6 +15,7 @@ package org.opentripplanner.graph_builder.module.osm;
 
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
+import org.opentripplanner.streets.permissions.TransportModePermissions;
 
 /**
  * Parameters applied to OSM ways, usually based on their tags:
@@ -38,6 +39,8 @@ public class WayProperties implements Cloneable {
     private static final P2<Double> defaultSafetyFeatures = new P2<Double>(1.0, 1.0);
 
     private P2<Double> safetyFeatures = defaultSafetyFeatures;
+
+    private TransportModePermissions modePermissions;
 
     public void setSafetyFeatures(P2<Double> safetyFeatures) {
         this.safetyFeatures = safetyFeatures;
@@ -77,5 +80,13 @@ public class WayProperties implements Cloneable {
 
     public int hashCode() {
         return safetyFeatures.hashCode() + permission.hashCode();
+    }
+
+    public void setModePermissions(TransportModePermissions modePermissions) {
+        this.modePermissions = modePermissions;
+    }
+
+    public TransportModePermissions getModePermissions() {
+        return modePermissions;
     }
 }

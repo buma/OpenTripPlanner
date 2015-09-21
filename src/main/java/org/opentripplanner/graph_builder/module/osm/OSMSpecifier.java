@@ -15,6 +15,7 @@ package org.opentripplanner.graph_builder.module.osm;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
@@ -41,6 +42,11 @@ public class OSMSpecifier {
         setKvpairs(spec);
     }
 
+    public OSMSpecifier(String tag, String value) {
+        this();
+        kvpairs.add(new P2<String>(tag, value));
+    }
+
     public void setKvpairs(String spec) {
         String[] pairs = spec.split(";");
         for (String pair : pairs) {
@@ -59,7 +65,7 @@ public class OSMSpecifier {
      *
      * @param match an OSM tagged object to compare to this specifier
      */
-    public P2<Integer> matchScores(OSMWithTags match) {
+    public P2<Integer> matchScores(IOSMWithTags match) {
         int leftScore = 0, rightScore = 0;
         int leftMatches = 0, rightMatches = 0;
         for (P2<String> pair : kvpairs) {
@@ -157,5 +163,18 @@ public class OSMSpecifier {
         }
         builder.deleteCharAt(builder.length() - 1); // remove trailing semicolon
         return builder.toString();
+    }
+
+    @Override public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        OSMSpecifier that = (OSMSpecifier) o;
+        return Objects.equals(kvpairs, that.kvpairs);
+    }
+
+    @Override public int hashCode() {
+        return Objects.hash(kvpairs);
     }
 }

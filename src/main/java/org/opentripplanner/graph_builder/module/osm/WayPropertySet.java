@@ -92,7 +92,7 @@ public class WayPropertySet {
      * Applies the WayProperties whose OSMPicker best matches this way. In addition, WayProperties that are mixins
      * will have their safety values applied if they match at all.
      */
-    public WayProperties getDataForWay(OSMWithTags way) {
+    public WayProperties getDataForWay(IOSMWithTags way) {
         WayProperties leftResult = defaultProperties;
         WayProperties rightResult = defaultProperties;
         int bestLeftScore = 0;
@@ -144,7 +144,7 @@ public class WayPropertySet {
         return result;
     }
 
-    private String dumpTags(OSMWithTags way) {
+    private String dumpTags(IOSMWithTags way) {
         /* generate warning message */
         String all_tags = null;
         Map<String, String> tags = way.getTags();
@@ -361,5 +361,26 @@ public class WayPropertySet {
 
     public List<SpeedPicker> getSpeedPickers() {
         return Collections.unmodifiableList(speedPickers);
+    }
+
+    /**
+     * Replaces current properties of osmSpecifier with new properties
+     *
+     * It is used in Country specific road access permissions which replaces the default ones.
+     * @param osmSpecifier
+     * @param properties
+     */
+    public void replaceProperties(OSMSpecifier osmSpecifier, WayProperties properties) {
+        WayPropertyPicker picker = new WayPropertyPicker(osmSpecifier, properties, false);
+        int indexOfOldPicker = wayProperties.indexOf(picker);
+        //If there exists wayproperties with same osmSpecifier
+        if (indexOfOldPicker >= 0) {
+            WayPropertyPicker oldPicker = wayProperties.get(indexOfOldPicker);
+            //this keeps permissions which are missing in new and overrides those that are in both
+            picker.getProperties().getModePermissions().fromOld(oldPicker.getProperties().getModePermissions());
+            wayProperties.set(indexOfOldPicker, picker);
+        } else {
+            wayProperties.add(picker);
+        }
     }
 }

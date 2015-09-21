@@ -13,6 +13,8 @@
 
 package org.opentripplanner.openstreetmap.model;
 
+import java.util.Map;
+
 /**
  * Interface for {@link OSMWithTags} so that same functions for getting
  * OSM street speed and permissions can be used from {@link com.conveyal.osmlib.OSMEntity}
@@ -196,5 +198,12 @@ public interface IOSMWithTags {
     default boolean isBikeParking() {
         return isTag("amenity", "bicycle_parking") && !isTag("access", "private")
             && !isTag("access", "no");
+    }
+
+    Map<String,String> getTags();
+
+    default long getId() {
+        //FIXME: this is temporary. Graph OSMWithTags overloads it OSMEntity doesn't
+        return 5;
     }
 }

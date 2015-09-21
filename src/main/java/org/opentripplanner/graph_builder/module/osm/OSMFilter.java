@@ -15,6 +15,7 @@ package org.opentripplanner.graph_builder.module.osm;
 
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.graph_builder.annotation.ConflictingBikeTags;
+import org.opentripplanner.openstreetmap.model.IOSMWay;
 import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 import org.opentripplanner.openstreetmap.model.OSMWay;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
@@ -78,7 +79,7 @@ public class OSMFilter {
         return false;
     }
 
-    public static StreetTraversalPermission getPermissionsForEntity(OSMWithTags entity,
+    public static StreetTraversalPermission getPermissionsForEntity(IOSMWithTags entity,
             StreetTraversalPermission def) {
         StreetTraversalPermission permission = null;
 
@@ -141,7 +142,7 @@ public class OSMFilter {
      * @param def
      * @return
      */
-    public static StreetTraversalPermission getPermissionsForWay(OSMWay way,
+    public static StreetTraversalPermission getPermissionsForWay(IOSMWay way,
             StreetTraversalPermission def, Graph graph) {
         StreetTraversalPermission permissions = getPermissionsForEntity(way, def);
 

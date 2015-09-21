@@ -15,7 +15,11 @@ package org.opentripplanner.streets;
 
 import com.conveyal.osmlib.OSMEntity;
 import com.conveyal.osmlib.Way;
+import org.opentripplanner.graph_builder.module.osm.WayProperties;
 import org.opentripplanner.openstreetmap.model.IOSMWithTags;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by mabu on 18.9.2015.
@@ -24,6 +28,9 @@ import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 //So OSMWAY implements IOSMWithTags, same as OSMWithTags
 //When Graph is removed this won't be used anymore because OSMEntity function will be called instead of OSMWithTags.
 abstract class OSMEntityWithTags extends OSMEntity implements IOSMWithTags {
+
+    public OSMEntityWithTags() {
+    }
 
     public OSMEntityWithTags(OSMEntity entity) {
         this.tags = entity.tags;
@@ -75,6 +82,18 @@ abstract class OSMEntityWithTags extends OSMEntity implements IOSMWithTags {
     public boolean isTagTrue(String tag) {
         return !hasNoTags() && IOSMWithTags.isFalse(getTag(tag));
 
+    }
+
+    @Override
+    public Map<String, String> getTags() {
+        if (hasNoTags()) {
+            return null;
+        }
+        Map<String, String>  mapTags = new HashMap<>(tags.size());
+        for (Tag tag: tags) {
+            mapTags.put(tag.key, tag.value);
+        }
+        return mapTags;
     }
 
     @Override public Type getType() {

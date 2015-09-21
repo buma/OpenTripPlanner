@@ -14,18 +14,23 @@ along with this program. If not, see <http://www.gnu.org/licenses/>. */
 package org.opentripplanner.streets;
 
 import com.conveyal.osmlib.Way;
+import org.opentripplanner.openstreetmap.model.IOSMWay;
 
 import java.util.Arrays;
 
 /**
  * Created by mabu on 18.9.2015.
  */
-public class OSMWay extends OSMEntityWithTags {
+public class OSMWay extends OSMEntityWithTags implements IOSMWay {
     public long[] nodes;
 
     public OSMWay(Way way) {
         super(way);
         this.nodes = way.nodes;
+    }
+
+    public OSMWay() {
+        super();
     }
 
     @Override
