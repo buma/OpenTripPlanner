@@ -20,7 +20,7 @@ import org.opentripplanner.graph_builder.module.osm.*;
 import org.opentripplanner.openstreetmap.model.*;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.streets.permissions.AccessRestrictionsAlgorithm;
-import org.opentripplanner.streets.permissions.AustriaPermissionsSetSource;
+import org.opentripplanner.streets.permissions.USAPermissionsSetSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,16 +36,15 @@ public class OSMEntityWayTest {
     private WayPropertySet newWayPropertySet;
     private AccessRestrictionsAlgorithm accessRestrictionsAlgorithm;
 
-
     @Before
     public void setUp() throws Exception {
         DefaultWayPropertySetSource defaultWayPropertySetSource = new DefaultWayPropertySetSource();
         wayPropertySet = defaultWayPropertySetSource.getWayPropertySet();
 
-        AustriaPermissionsSetSource austriaPermissionsSetSource = new AustriaPermissionsSetSource();
-        newWayPropertySet = austriaPermissionsSetSource.getWayPropertySet();
+        USAPermissionsSetSource usaPermissionsSetSource = new USAPermissionsSetSource();
+        newWayPropertySet = usaPermissionsSetSource.getWayPropertySet();
 
-        accessRestrictionsAlgorithm = new AccessRestrictionsAlgorithm(austriaPermissionsSetSource, austriaPermissionsSetSource);
+        accessRestrictionsAlgorithm = new AccessRestrictionsAlgorithm(usaPermissionsSetSource, usaPermissionsSetSource);
 
     }
 
@@ -75,8 +74,7 @@ public class OSMEntityWayTest {
     public void testCyclewayPermissions() throws Exception {
         OSMWay osmWay = new OSMWay();
         osmWay.addTag("highway", "cycleway");
-        //assertEquals(getWayPermissions(osmWay), calculateWayPermissions(osmWay));
-        assertEquals(StreetTraversalPermission.BICYCLE, calculateWayPermissions(osmWay));
+        assertEquals(getWayPermissions(osmWay), calculateWayPermissions(osmWay));
 
     }
 
