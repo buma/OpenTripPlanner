@@ -61,33 +61,23 @@ public class CountryPermissionsSetSource implements WayPropertySetSource, Transp
     public WayPropertySet getWayPropertySet() {
         WayPropertySet props = new WayPropertySet();
 
-        TransportModePermission[] motorwayPermissionsArray = new TransportModePermission[]{
-            new TransportModePermission(TransportModeType.ACCESS, OSMAccessPermissions.DESIGNATED),
-            new TransportModePermission(TransportModeType.MOTORCAR, OSMAccessPermissions.INHERITED_DESIGNATED),
-            new TransportModePermission(TransportModeType.MOTORCYCLE, OSMAccessPermissions.INHERITED_DESIGNATED),
-            new TransportModePermission(TransportModeType.HGV, OSMAccessPermissions.INHERITED_DESIGNATED),
-            new TransportModePermission(TransportModeType.PSV, OSMAccessPermissions.INHERITED_DESIGNATED),
-            new TransportModePermission(TransportModeType.MOPED, OSMAccessPermissions.NO),
-            new TransportModePermission(TransportModeType.HORSE, OSMAccessPermissions.NO),
-            new TransportModePermission(TransportModeType.BICYCLE, OSMAccessPermissions.NO),
-            new TransportModePermission(TransportModeType.FOOT, OSMAccessPermissions.NO)};
+        TransportModePermissions motorwayPermissions = new TransportModePermissions();
+        motorwayPermissions.add(TransportModeType.ACCESS, OSMAccessPermissions.DESIGNATED);
+        motorwayPermissions.add(
+            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
+                TransportModeType.HGV, TransportModeType.PSV },
+            OSMAccessPermissions.INHERITED_DESIGNATED);
+        motorwayPermissions.add(
+            new TransportModeType[] { TransportModeType.MOPED, TransportModeType.HORSE,
+                TransportModeType.BICYCLE, TransportModeType.FOOT }, OSMAccessPermissions.NO);
 
-            TransportModePermission[]trunkPermissionsArray = new TransportModePermission[] {
-            new TransportModePermission(TransportModeType.ACCESS, OSMAccessPermissions.YES),
-            new TransportModePermission(TransportModeType.MOTORCAR,
-                OSMAccessPermissions.INHERITED_YES),
-            new TransportModePermission(TransportModeType.MOTORCYCLE,
-                OSMAccessPermissions.INHERITED_YES),
-            new TransportModePermission(TransportModeType.HGV,
-                OSMAccessPermissions.INHERITED_YES),
-            new TransportModePermission(TransportModeType.PSV,
-                OSMAccessPermissions.INHERITED_YES),
-            new TransportModePermission(TransportModeType.MOPED, OSMAccessPermissions.INHERITED_YES),
-            new TransportModePermission(TransportModeType.HORSE, OSMAccessPermissions.INHERITED_YES),
-            new TransportModePermission(TransportModeType.BICYCLE, OSMAccessPermissions.INHERITED_YES),
-            new TransportModePermission(TransportModeType.FOOT, OSMAccessPermissions.INHERITED_YES) };
-
-        TransportModePermissions otherStreets = TransportModePermissions.makeFromArray(trunkPermissionsArray);
+        TransportModePermissions otherStreets = new TransportModePermissions();
+        otherStreets.add(TransportModeType.ACCESS, OSMAccessPermissions.YES);
+        otherStreets.add(
+            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
+                TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED,
+                TransportModeType.HORSE, TransportModeType.BICYCLE, TransportModeType.FOOT },
+            OSMAccessPermissions.INHERITED_YES);
 
 
         TransportModePermissions pedestrian = new TransportModePermissions();
@@ -104,9 +94,6 @@ public class CountryPermissionsSetSource implements WayPropertySetSource, Transp
             TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV,
             TransportModeType.MOPED, TransportModeType.HORSE, TransportModeType.FOOT}, OSMAccessPermissions.INHERITED_NO);
         cycleway.add(TransportModeType.BICYCLE, OSMAccessPermissions.DESIGNATED);
-
-
-        TransportModePermissions motorwayPermissions = TransportModePermissions.makeFromArray(motorwayPermissionsArray);
 
         setProperties(props, "motorway", motorwayPermissions);
         setProperties(props, "trunk|primary|secondary|tertiary|unclassified|residential|living_street|road", otherStreets);
