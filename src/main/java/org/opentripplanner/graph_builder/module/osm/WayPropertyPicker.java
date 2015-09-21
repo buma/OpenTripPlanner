@@ -13,8 +13,6 @@
 
 package org.opentripplanner.graph_builder.module.osm;
 
-import java.util.Objects;
-
 /**
  * Associates an OSMSpecifier with some WayProperties. The WayProperties will be applied an OSM way when the OSMSpecifier
  * matches it better than any other OSMSpecifier in the same WayPropertySet. WayPropertyPickers may be mixins, in which
@@ -65,19 +63,5 @@ public class WayPropertyPicker {
      */
     public boolean isSafetyMixin() {
         return safetyMixin;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
-        WayPropertyPicker picker = (WayPropertyPicker) o;
-        return Objects.equals(getSpecifier(), picker.getSpecifier());
-    }
-
-    @Override public int hashCode() {
-        return Objects.hash(getSpecifier());
     }
 }

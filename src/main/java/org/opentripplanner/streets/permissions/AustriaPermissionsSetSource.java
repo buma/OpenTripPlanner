@@ -14,31 +14,34 @@
 package org.opentripplanner.streets.permissions;
 
 
-import org.opentripplanner.graph_builder.module.osm.OSMSpecifier;
-import org.opentripplanner.graph_builder.module.osm.WayProperties;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
+import org.opentripplanner.graph_builder.module.osm.WayPropertySetSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
 
 /**
  * This are default permissions for Austria from: https://wiki.openstreetmap.org/wiki/OSM_tags_for_routing/Access-Restrictions#Austria
  * Created by mabu on 18.9.2015.
  */
-public class AustriaPermissionsSetSource extends CountryPermissionsSetSource {
+public class AustriaPermissionsSetSource extends CountryPermissionsSetSource implements
+    WayPropertySetSource {
 
     private static final Logger LOG = LoggerFactory.getLogger(AustriaPermissionsSetSource.class);
 
-    @Override public WayPropertySet getWayPropertySet() {
-        WayPropertySet wayPropertySet = super.getWayPropertySet();
+    private final WayPropertySet wayPropertySet;
 
+
+
+
+    public AustriaPermissionsSetSource() {
+        super();
+
+        wayPropertySet = new WayPropertySet();
         TransportModePermissions living_street = new TransportModePermissions();
         living_street.add(new TransportModeType[]{TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED}, OSMAccessPermissions.DESTINATION);
         living_street.add(
             new TransportModeType[] { TransportModeType.HORSE, TransportModeType.BICYCLE,
                 TransportModeType.FOOT }, OSMAccessPermissions.YES);
-        replaceProperties(wayPropertySet, "living_street", living_street);
 
         TransportModePermissions cycleway = new TransportModePermissions();
         cycleway.add(
@@ -46,25 +49,17 @@ public class AustriaPermissionsSetSource extends CountryPermissionsSetSource {
                 TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED,
                 TransportModeType.HORSE, TransportModeType.FOOT }, OSMAccessPermissions.NO);
         cycleway.add(TransportModeType.BICYCLE, OSMAccessPermissions.DESIGNATED);
-        replaceProperties(wayPropertySet, "cycleway", cycleway);
 
-        return wayPropertySet;
+
+        replaceProperties("living_street", living_street);
+        replaceProperties("cycleway", cycleway);
     }
 
-    /**
-     * Updates existing properties with country specific ones.
-     *
-     * @param props
-     * @param tagSpecifier
-     * @param tagPermissions
-     */
-    private void replaceProperties(WayPropertySet props, String tagSpecifier,
-        TransportModePermissions tagPermissions) {
-        WayProperties properties = new WayProperties();
-        properties.setModePermissions(tagPermissions);
-        Collection<OSMSpecifier> specifiers = getSpecifiers(tagSpecifier);
-        for (OSMSpecifier osmSpecifier: specifiers) {
-            props.replaceProperties(osmSpecifier, properties);
-        }
+
+
+    @Override
+    public WayPropertySet getWayPropertySet() {
+        fillWayPropertySet(this.wayPropertySet);
+        return wayPropertySet;
     }
 }

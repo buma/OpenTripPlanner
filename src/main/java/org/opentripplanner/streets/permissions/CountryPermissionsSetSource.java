@@ -16,7 +16,6 @@ package org.opentripplanner.streets.permissions;
 import org.opentripplanner.graph_builder.module.osm.OSMSpecifier;
 import org.opentripplanner.graph_builder.module.osm.WayProperties;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
-import org.opentripplanner.graph_builder.module.osm.WayPropertySetSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,11 +26,15 @@ import java.util.*;
  * It should not be used by itself.
  * Created by mabu on 18.9.2015.
  */
-public class CountryPermissionsSetSource implements WayPropertySetSource, TransportModeHierarchyTree {
+public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
 
     private static final Logger LOG = LoggerFactory.getLogger(CountryPermissionsSetSource.class);
 
+    protected Map<OSMSpecifier, TransportModePermissions> permissionsForRoadType;
+
     static final Map<String, Boolean> validTags;
+
+    private boolean filledWayPropertySet = false;
 
     static {
         Map<String, Boolean> validTags1;
@@ -53,14 +56,8 @@ public class CountryPermissionsSetSource implements WayPropertySetSource, Transp
         validTags = Collections.unmodifiableMap(validTags1);
     }
 
-    /**
-     * This are wayProperties which are default Each country extends this class and overrides them.
-     * @return
-     */
-    @Override
-    public WayPropertySet getWayPropertySet() {
-        WayPropertySet props = new WayPropertySet();
-
+    public CountryPermissionsSetSource() {
+        permissionsForRoadType = new HashMap<>(10);
         TransportModePermissions motorwayPermissions = new TransportModePermissions();
         motorwayPermissions.add(TransportModeType.ACCESS, OSMAccessPermissions.DESIGNATED);
         motorwayPermissions.add(
@@ -83,8 +80,8 @@ public class CountryPermissionsSetSource implements WayPropertySetSource, Transp
         TransportModePermissions pedestrian = new TransportModePermissions();
         pedestrian.add(TransportModeType.ACCESS, OSMAccessPermissions.NO);
         pedestrian.add(new TransportModeType[]{TransportModeType.MOTORCAR,
-            TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV,
-            TransportModeType.MOPED, TransportModeType.HORSE, TransportModeType.BICYCLE},
+                TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV,
+                TransportModeType.MOPED, TransportModeType.HORSE, TransportModeType.BICYCLE},
             OSMAccessPermissions.INHERITED_NO);
         pedestrian.add(TransportModeType.FOOT, OSMAccessPermissions.YES);
 
@@ -121,29 +118,52 @@ public class CountryPermissionsSetSource implements WayPropertySetSource, Transp
             OSMAccessPermissions.INHERITED_NO);
         footway.add(TransportModeType.FOOT, OSMAccessPermissions.DESIGNATED);
 
-        setProperties(props, "motorway", motorwayPermissions);
-        setProperties(props, "trunk|primary|secondary|tertiary|unclassified|residential|living_street|road", otherStreets);
-        setProperties(props, "pedestrian", pedestrian);
-        setProperties(props, "path", path);
-        setProperties(props, "bridleway", bridleway);
-        setProperties(props, "cycleway", cycleway);
-        setProperties(props, "footway", footway);
-
-        return props;
+        prepareProperties("motorway", motorwayPermissions);
+        prepareProperties(
+            "trunk|primary|secondary|tertiary|unclassified|residential|living_street|road",
+            otherStreets);
+        prepareProperties("pedestrian", pedestrian);
+        prepareProperties("path", path);
+        prepareProperties("bridleway", bridleway);
+        prepareProperties("cycleway", cycleway);
+        prepareProperties("footway", footway);
     }
 
     /**
-     * Set transportModePermissions for specified highwayTags
-     * @param props current wayPropertySet
-     * @param tagSpecifiers highway tags separated with |
-     * @param tagPermissions Transport mode permissions for specified highway tags
+     * Adds tagSpecifiers to local map
+     *
+     * This map is used in classes which extend this as default permissions. Non overridden permissions are used.
+     * @param tagSpecifiers
+     * @param tagPermissions
      */
-    protected void setProperties(WayPropertySet props, String tagSpecifiers, TransportModePermissions tagPermissions) {
-        WayProperties properties = new WayProperties();
-        properties.setModePermissions(tagPermissions);
-        Collection<OSMSpecifier> specifiers = getSpecifiers(tagSpecifiers);
-        for (OSMSpecifier osmSpecifier: specifiers) {
-            props.addProperties(osmSpecifier, properties);
+    private void prepareProperties(String tagSpecifiers, TransportModePermissions tagPermissions) {
+        for (final OSMSpecifier specifier : getSpecifiers(tagSpecifiers)) {
+            permissionsForRoadType.put(specifier, tagPermissions);
+        }
+    }
+
+    public final Map<OSMSpecifier, TransportModePermissions> getPermissionsForRoadType() {
+        return Collections.unmodifiableMap(permissionsForRoadType);
+    }
+
+
+    /**
+     * Replaces current properties of osmSpecifier with new properties
+     *
+     * It is used in Country specific road access permissions which replaces the default ones.
+     * @param tagSpecifiers
+     * @param transportModePermissions
+     */
+    protected final void replaceProperties(String tagSpecifiers,
+        TransportModePermissions transportModePermissions) {
+        //Those are permissions which are default
+        Map<OSMSpecifier, TransportModePermissions> previousModePermissions = getPermissionsForRoadType();
+        for (final OSMSpecifier osmSpecifier : getSpecifiers(tagSpecifiers)) {
+            TransportModePermissions oldRoadPermissions = previousModePermissions.get(osmSpecifier);
+            if (oldRoadPermissions != null) {
+                transportModePermissions.fromOld(oldRoadPermissions);
+            }
+            permissionsForRoadType.put(osmSpecifier, transportModePermissions);
         }
     }
 
@@ -154,7 +174,7 @@ public class CountryPermissionsSetSource implements WayPropertySetSource, Transp
      * @param tagSpecifiers
      * @return
      */
-    protected Collection<OSMSpecifier> getSpecifiers(String tagSpecifiers) {
+    protected final Collection<OSMSpecifier> getSpecifiers(String tagSpecifiers) {
         Set<OSMSpecifier> specifiers = new HashSet<>(10);
         if (tagSpecifiers.contains("|")) {
             for (String specifier: tagSpecifiers.split("\\|")) {
@@ -178,6 +198,24 @@ public class CountryPermissionsSetSource implements WayPropertySetSource, Transp
             }
         }
         return specifiers;
+    }
+
+    /**
+     * Fills wayPropertySet with transport mode permissions
+     *
+     * Set is filled only once.
+     */
+    protected void fillWayPropertySet(WayPropertySet wayPropertySet) {
+        if (filledWayPropertySet) {
+            return;
+        }
+        for (final Map.Entry<OSMSpecifier, TransportModePermissions> entry : permissionsForRoadType
+            .entrySet()) {
+            WayProperties properties = new WayProperties();
+            properties.setModePermissions(entry.getValue());
+            wayPropertySet.addProperties(entry.getKey(), properties);
+        }
+        filledWayPropertySet = true;
     }
 
     @Override
