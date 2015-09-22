@@ -80,7 +80,7 @@ abstract class OSMEntityWithTags extends OSMEntity implements IOSMWithTags {
      */
     @Override
     public boolean isTagTrue(String tag) {
-        return !hasNoTags() && IOSMWithTags.isFalse(getTag(tag));
+        return !hasNoTags() && IOSMWithTags.isTrue(getTag(tag));
 
     }
 
