@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.opentripplanner.graph_builder.module.osm.OSMSpecifier;
 import org.opentripplanner.graph_builder.module.osm.SpeedPicker;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
+import org.opentripplanner.streets.permissions.USAPermissionsSetSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +77,9 @@ public class SpeedsFactory {
 
         props.defaultSpeed = 11.2f; // ~= 25 mph ~= 40 km/h
 
+        final USAPermissionsSetSource usaPermissionsSetSource = new USAPermissionsSetSource(props);
+        props = usaPermissionsSetSource.getWayPropertySet();
+
         this.unit = "mph";
         toUnit = METERS_PER_SECOND.getConverterTo(MILES_PER_HOUR);
     }
@@ -88,7 +92,8 @@ public class SpeedsFactory {
      * @param unit in which speeds were read (only used in toString method)
      */
     public SpeedsFactory(WayPropertySet propertySet, UnitConverter unitConverter, String unit) {
-        this.props = propertySet;
+        final USAPermissionsSetSource usaPermissionsSetSource = new USAPermissionsSetSource(propertySet);
+        this.props = usaPermissionsSetSource.getWayPropertySet();
         this.toUnit = unitConverter;
         this.unit = unit;
     }

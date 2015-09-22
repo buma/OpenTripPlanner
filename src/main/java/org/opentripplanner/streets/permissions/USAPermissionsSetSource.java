@@ -28,9 +28,9 @@ public class USAPermissionsSetSource extends CountryPermissionsSetSource impleme
 
     private final WayPropertySet wayPropertySet;
 
-    public USAPermissionsSetSource() {
+    public USAPermissionsSetSource(WayPropertySet wayPropertySet) {
         super();
-        this.wayPropertySet = new WayPropertySet();
+        this.wayPropertySet = wayPropertySet;
 
         TransportModePermissions motorwayPermissions = new TransportModePermissions();
         motorwayPermissions.add(
@@ -97,6 +97,10 @@ public class USAPermissionsSetSource extends CountryPermissionsSetSource impleme
         replaceProperties("bridleway", bridleway);
         replaceProperties("cycleway", cycleway);
         replaceProperties("footway", footway);
+    }
+
+    public USAPermissionsSetSource() {
+        this(new WayPropertySet());
     }
 
     @Override

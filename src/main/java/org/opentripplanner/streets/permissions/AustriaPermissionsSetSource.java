@@ -30,13 +30,10 @@ public class AustriaPermissionsSetSource extends CountryPermissionsSetSource imp
 
     private final WayPropertySet wayPropertySet;
 
-
-
-
-    public AustriaPermissionsSetSource() {
+    public AustriaPermissionsSetSource(WayPropertySet wayPropertySet) {
         super();
 
-        wayPropertySet = new WayPropertySet();
+        this.wayPropertySet = wayPropertySet;
         TransportModePermissions living_street = new TransportModePermissions();
         living_street.add(new TransportModeType[]{TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED}, OSMAccessPermissions.DESTINATION);
         living_street.add(
@@ -61,5 +58,9 @@ public class AustriaPermissionsSetSource extends CountryPermissionsSetSource imp
     public WayPropertySet getWayPropertySet() {
         fillWayPropertySet(this.wayPropertySet);
         return wayPropertySet;
+    }
+
+    public AustriaPermissionsSetSource() {
+        this(new WayPropertySet());
     }
 }
