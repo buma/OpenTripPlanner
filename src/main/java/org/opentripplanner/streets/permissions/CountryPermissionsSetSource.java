@@ -48,11 +48,14 @@ public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
         validTags1.put("residential", false);
         validTags1.put("living_street", false);
         validTags1.put("road", false);
+        validTags1.put("service", false);
+        validTags1.put("track", false);
         validTags1.put("pedestrian", false);
         validTags1.put("path", false);
         validTags1.put("bridleway", false);
         validTags1.put("cycleway", false);
         validTags1.put("footway", false);
+        validTags1.put("steps", false);
         validTags = Collections.unmodifiableMap(validTags1);
     }
 
@@ -120,13 +123,14 @@ public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
 
         prepareProperties("motorway", motorwayPermissions);
         prepareProperties(
-            "trunk|primary|secondary|tertiary|unclassified|residential|living_street|road",
+            "trunk|primary|secondary|tertiary|unclassified|residential|living_street|road|service|track",
             otherStreets);
         prepareProperties("pedestrian", pedestrian);
         prepareProperties("path", path);
         prepareProperties("bridleway", bridleway);
         prepareProperties("cycleway", cycleway);
-        prepareProperties("footway", footway);
+        //TODO: some steps have bicycle and wheelchair ramps
+        prepareProperties("footway|steps", footway);
     }
 
     /**

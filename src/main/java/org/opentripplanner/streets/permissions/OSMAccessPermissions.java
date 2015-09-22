@@ -9,6 +9,8 @@ public enum OSMAccessPermissions {
     DESTINATION,
     DISMOUNT,
     DESIGNATED,
+    PRIVATE,
+    PERMISSIVE,
     INHERITED_YES,
     INHERITED_NO,
     INHERITED_DESIGNATED,
