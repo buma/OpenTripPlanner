@@ -15,10 +15,11 @@
 
 package org.opentripplanner.openstreetmap.model;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
+import com.conveyal.osmlib.OSMEntity;
 import org.opentripplanner.graph_builder.module.osm.TemplateLibrary;
+import org.opentripplanner.streets.permissions.TransportModeType;
 import org.opentripplanner.util.I18NString;
 import org.opentripplanner.util.NonLocalizedString;
 import org.opentripplanner.util.TranslatedString;
@@ -41,6 +42,25 @@ public class OSMWithTags implements IOSMWithTags {
      */
     public long getId() {
         return id;
+    }
+
+    @Override
+    public Collection<OSMEntity.Tag> getPermissionTags() {
+        if (_tags == null) {
+            return new ArrayList<OSMEntity.Tag>();
+        }
+        Set<String> permission_tags = new HashSet<>(TransportModeType.values().length);
+        for (TransportModeType modeType : TransportModeType.values()) {
+            permission_tags.add(modeType.toString().toLowerCase());
+        }
+
+        List<OSMEntity.Tag> tags = new ArrayList<>(_tags.size());
+        for (final Map.Entry<String, String> entry : _tags.entrySet()) {
+            if (permission_tags.contains(entry.getKey())) {
+                tags.add(new OSMEntity.Tag(entry.getKey(), entry.getValue()));
+            }
+        }
+        return tags;
     }
 
     /**

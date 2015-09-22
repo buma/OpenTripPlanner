@@ -13,6 +13,9 @@
 
 package org.opentripplanner.openstreetmap.model;
 
+import com.conveyal.osmlib.OSMEntity;
+
+import java.util.Collection;
 import java.util.Map;
 
 /**
@@ -206,4 +209,6 @@ public interface IOSMWithTags {
         //FIXME: this is temporary. Graph OSMWithTags overloads it OSMEntity doesn't
         return 5;
     }
+
+    Collection<OSMEntity.Tag> getPermissionTags();
 }

@@ -13,6 +13,7 @@
 
 package org.opentripplanner.streets.permissions;
 
+import com.conveyal.osmlib.OSMEntity;
 import org.opentripplanner.graph_builder.module.osm.WayProperties;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySetSource;
@@ -21,9 +22,7 @@ import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.EnumMap;
-import java.util.Enumeration;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Access restriction algorithm itself
@@ -83,8 +82,37 @@ public class AccessRestrictionsAlgorithm {
 
         //TODO add changing of permissions for specific modes
 
+        Collection<OSMEntity.Tag> permissionTags = way.getPermissionTags();
+        EnumMap<TransportModeType, OSMAccessPermissions> specificPermissions = new EnumMap<TransportModeType, OSMAccessPermissions>(TransportModeType.class);
+        for (final OSMEntity.Tag tag : permissionTags) {
+            LOG.info("TAG:{}", tag);
+            TransportModeType transportModeType = TransportModeType.valueOf(
+                tag.key.toUpperCase(Locale.ENGLISH));
+            try {
+                OSMAccessPermissions osmAccessPermissions = OSMAccessPermissions
+                    .valueOf(tag.value.toUpperCase(Locale.ENGLISH));
+                specificPermissions.put(transportModeType, osmAccessPermissions);
+                LOG.info("Added {} -> {}", transportModeType, osmAccessPermissions);
+            } catch (IllegalArgumentException ial) {
+                LOG.warn("\"{}\" is not valid OSM acces permission", tag.value);
+            }
+        }
 
         StreetTraversalPermission permission = StreetTraversalPermission.NONE;
+        //Setting specific permission exceptions
+        for (Enumeration bfsTree = root.breadthFirstEnumeration(); bfsTree.hasMoreElements();) {
+            TransportModeTreeItem currentLeaf = (TransportModeTreeItem) bfsTree.nextElement();
+            TransportModeType currentTransportMode = currentLeaf.getTransportModeType();
+            OSMAccessPermissions defaultHighwayTypePermission = specificPermissions.getOrDefault(currentTransportMode,
+                OSMAccessPermissions.UNKNOWN);
+            if (defaultHighwayTypePermission != OSMAccessPermissions.UNKNOWN) {
+                currentLeaf.setPermission(defaultHighwayTypePermission);
+            }
+            LOG.info("Depth: {} info:{}", currentLeaf.getDepth(), currentLeaf);
+        }
+
+        EnumMap<TransportModeType, OSMAccessPermissions> permissionsMap = new EnumMap<>(
+            TransportModeType.class);
 
         //Getting permissions from the tree
         //We actually loose some information since we get information if mode is designated yes or dismount

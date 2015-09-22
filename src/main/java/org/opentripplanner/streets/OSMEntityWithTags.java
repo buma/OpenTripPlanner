@@ -17,9 +17,9 @@ import com.conveyal.osmlib.OSMEntity;
 import com.conveyal.osmlib.Way;
 import org.opentripplanner.graph_builder.module.osm.WayProperties;
 import org.opentripplanner.openstreetmap.model.IOSMWithTags;
+import org.opentripplanner.streets.permissions.TransportModeType;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by mabu on 18.9.2015.
@@ -98,5 +98,23 @@ abstract class OSMEntityWithTags extends OSMEntity implements IOSMWithTags {
 
     @Override public Type getType() {
         return null;
+    }
+
+    @Override public Collection<Tag> getPermissionTags() {
+        if (hasNoTags()) {
+            return new ArrayList<>();
+        }
+        Set<String> permissionTagKeys = new HashSet<>(TransportModeType.values().length);
+        for (TransportModeType modeType : TransportModeType.values()) {
+            permissionTagKeys.add(modeType.toString().toLowerCase());
+        }
+
+        List<OSMEntity.Tag> permissionTags = new ArrayList<>(tags.size());
+        for (final Tag tag : tags) {
+            if (permissionTagKeys.contains(tag.key)) {
+                permissionTags.add(tag);
+            }
+        }
+        return permissionTags;
     }
 }
