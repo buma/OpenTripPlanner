@@ -326,11 +326,22 @@ public class StreetLayer implements Serializable {
         edge.setToVertex(newVertexIndex);
         edge.setGeometry(Collections.EMPTY_LIST); // Turn it into a straight line for now.
 
+        //Makes sure that correct speed is get from forward/reverse edge.
+        int forwardSpeed, backwardSpeed;
+        if (edge.isBackward()) {
+            backwardSpeed = edge.getSpeed();
+            EdgeStore.Edge reverseEdge = edgeStore.getCursor(split.edge-1);
+            forwardSpeed = reverseEdge.getSpeed();
+        } else {
+            forwardSpeed = edge.getSpeed();
+            EdgeStore.Edge reverseEdge = edgeStore.getCursor(split.edge+1);
+            backwardSpeed = reverseEdge.getSpeed();
+        }
+
         // Make a second, new bidirectional edge pair after the split and add it to the spatial index.
         // New edges will be added to edge lists later (the edge list is a transient index).
         EdgeStore.Edge newEdge = edgeStore.addStreetPair(newVertexIndex, oldToVertex, split.distance1_mm,
-            edge.getOSMID(), edge.getName(), edge.getSpeed(), edge.getSpeed());
-        //FIXME: Here it is probably an error to give same speed to forward and backward edge.Backward should get speed from backward edge
+            edge.getOSMID(), edge.getName(), forwardSpeed, backwardSpeed);
         spatialIndex.insert(newEdge.getEnvelope(), newEdge.edgeIndex);
         // TODO newEdge.copyFlagsFrom(edge) to match the existing edge...
         return newVertexIndex;
