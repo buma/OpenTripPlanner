@@ -45,11 +45,16 @@ public class OSMFilter {
         if (!isOsmEntityRoutable(way))
             return false;
 
+        if (way.isUnderConstruction()) {
+            return false;
+        }
+
         String highway = way.getTag("highway");
         if (highway != null
                 && (highway.equals("conveyer") || highway.equals("proposed")
-                        || highway.equals("construction") || highway.equals("raceway") || highway
-                            .equals("unbuilt")))
+                        || highway.equals("raceway") || highway.equals("unbuilt")
+            //Those two are areas which are places around highway (similar to landuse tags they aren't routable)
+            || highway.equals("services") || highway.equals("rest_area")))
             return false;
 
         if (way.isGeneralAccessDenied()) {

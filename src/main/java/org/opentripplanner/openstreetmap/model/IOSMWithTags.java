@@ -72,7 +72,9 @@ public interface IOSMWithTags {
     default boolean isUnderConstruction() {
         String highway = getTag("highway");
         String cycleway = getTag("cycleway");
-        return "construction".equals(highway) || "construction".equals(cycleway);
+        return "construction".equals(highway) || "construction".equals(cycleway)
+            //construction can be yes if old tagging or primary, secondary, residential etc
+            || hasTag("construction");
     }
 
     /**
