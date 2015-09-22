@@ -47,8 +47,10 @@ public class AccessRestrictionsAlgorithm {
         this.transportModeHierarchy = transportModeHierarchyTree.getTransportModeHierarchyTree();
     }
 
-    public StreetTraversalPermission calculateWayPermissions(IOSMWay way) {
+    public EnumMap<TransportModeType, OSMAccessPermissions> calculateWayPermissions(IOSMWay way) {
+
         WayProperties wayData = wayPropertySet.getDataForWay(way);
+        LOG.info("Tags:{}", way.getTags());
         //Gets specific access for highway of way based on provided wayPropertySetSource
         LOG.info("wayData: {}", wayData.getModePermissions());
 
@@ -94,11 +96,10 @@ public class AccessRestrictionsAlgorithm {
                 specificPermissions.put(transportModeType, osmAccessPermissions);
                 LOG.info("Added {} -> {}", transportModeType, osmAccessPermissions);
             } catch (IllegalArgumentException ial) {
-                LOG.warn("\"{}\" is not valid OSM acces permission", tag.value);
+                LOG.warn("\"{}\" is not valid OSM access permission", tag.value);
             }
         }
 
-        StreetTraversalPermission permission = StreetTraversalPermission.NONE;
         //Setting specific permission exceptions
         for (Enumeration bfsTree = root.breadthFirstEnumeration(); bfsTree.hasMoreElements();) {
             TransportModeTreeItem currentLeaf = (TransportModeTreeItem) bfsTree.nextElement();
@@ -119,11 +120,27 @@ public class AccessRestrictionsAlgorithm {
         for (Map.Entry<TransportModeType, TransportModeTreeItem> map: usefulTransportModes.entrySet()) {
             OSMAccessPermissions permissions = map.getValue().getFullPermission();
             LOG.info("MODE:{} permission:{}", map.getKey(), permissions);
+            permissionsMap.put(map.getKey(), permissions);
+        }
+
+        return permissionsMap;
+    }
+
+    /**
+     * Converts permissions from map to StreetTraversalPermission which is used in tests
+     * @param mapPermissions
+     * @return
+     */
+    public static StreetTraversalPermission convertPermission(
+        EnumMap<TransportModeType, OSMAccessPermissions> mapPermissions) {
+        StreetTraversalPermission permission = StreetTraversalPermission.NONE;
+        for (final Map.Entry<TransportModeType, OSMAccessPermissions> map : mapPermissions.entrySet()) {
+            OSMAccessPermissions permissions = map.getValue();
             if (map.getKey() == TransportModeType.FOOT) {
                 if (permissions != OSMAccessPermissions.NO) {
                     permission = permission.add(StreetTraversalPermission.PEDESTRIAN);
                 }
-            } else if(map.getKey() == TransportModeType.BICYCLE) {
+            } else if (map.getKey() == TransportModeType.BICYCLE) {
                 if (!(permissions == OSMAccessPermissions.NO || permissions == OSMAccessPermissions.DISMOUNT)) {
                     permission = permission.add(StreetTraversalPermission.BICYCLE);
                 }

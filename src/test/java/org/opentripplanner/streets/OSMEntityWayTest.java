@@ -20,9 +20,13 @@ import org.opentripplanner.graph_builder.module.osm.*;
 import org.opentripplanner.openstreetmap.model.*;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.streets.permissions.AccessRestrictionsAlgorithm;
+import org.opentripplanner.streets.permissions.OSMAccessPermissions;
+import org.opentripplanner.streets.permissions.TransportModeType;
 import org.opentripplanner.streets.permissions.USAPermissionsSetSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.EnumMap;
 
 import static org.junit.Assert.*;
 
@@ -63,7 +67,9 @@ public class OSMEntityWayTest {
     }
 
     private StreetTraversalPermission calculateWayPermissions(IOSMWay way) {
-        return accessRestrictionsAlgorithm.calculateWayPermissions(way);
+        EnumMap<TransportModeType, OSMAccessPermissions> mapPermissions = accessRestrictionsAlgorithm
+        .calculateWayPermissions(way);
+        return AccessRestrictionsAlgorithm.convertPermission(mapPermissions);
     }
 
     /*private P2<StreetTraversalPermission> calculateWayPermissions(
@@ -74,6 +80,9 @@ public class OSMEntityWayTest {
     public void testCyclewayPermissions() throws Exception {
         OSMWay osmWay = new OSMWay();
         osmWay.addTag("highway", "cycleway");
+        assertEquals(getWayPermissions(osmWay), calculateWayPermissions(osmWay));
+
+        osmWay.addTag("access", "destination");
         assertEquals(getWayPermissions(osmWay), calculateWayPermissions(osmWay));
 
     }
