@@ -20,6 +20,7 @@ import com.vividsolutions.jts.geom.Envelope;
 import gnu.trove.set.TIntSet;
 import org.opentripplanner.inspector.DefaultScalarColorPalette;
 import org.opentripplanner.inspector.ScalarColorPalette;
+import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.standalone.OTPServerWithNetworks;
 import org.opentripplanner.streets.EdgeStore;
 import org.opentripplanner.streets.VertexStore;
@@ -81,6 +82,40 @@ import static javax.measure.unit.NonSI.KILOMETERS_PER_HOUR;
     //Gets colors for speeds in km/h
     private ScalarColorPalette palette = new DefaultScalarColorPalette(10.0, 90.0, 130.0);
 
+    private Color getPermissionColor(StreetTraversalPermission permissions) {
+        /*
+         * We use the trick that there are 3 main traversal modes (WALK, BIKE and CAR) and 3 color
+         * channels (R, G, B).
+         */
+        float r = 0.2f;
+        float g = 0.2f;
+        float b = 0.2f;
+        if (permissions.allows(StreetTraversalPermission.PEDESTRIAN))
+            g += 0.5f;
+        if (permissions.allows(StreetTraversalPermission.BICYCLE))
+            b += 0.5f;
+        if (permissions.allows(StreetTraversalPermission.CAR))
+            r += 0.5f;
+        // TODO CUSTOM_VEHICLE (?)
+        return new Color(r, g, b);
+    }
+
+    private String getPermissionLabel(StreetTraversalPermission permissions) {
+        StringBuffer sb = new StringBuffer();
+        if (permissions.allows(StreetTraversalPermission.PEDESTRIAN))
+            sb.append("walk,");
+        if (permissions.allows(StreetTraversalPermission.BICYCLE))
+            sb.append("bike,");
+        if (permissions.allows(StreetTraversalPermission.CAR))
+            sb.append("car,");
+        if (sb.length() > 0) {
+            sb.setLength(sb.length() - 1); // Remove last comma
+        } else {
+            sb.append("none");
+        }
+        return sb.toString();
+    }
+
     @GET @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML + Q,
         MediaType.TEXT_XML + Q }) public Response visualize() {
 
@@ -136,6 +171,94 @@ import static javax.measure.unit.NonSI.KILOMETERS_PER_HOUR;
                                     color.getBlue());
                             gen.writeStringField("speed",
                                 String.format("%.2f km/h", unitConverter.convert(speedMs)));
+                            //gen.writeNumberField("speed_ms", speedMs);
+                            gen.writeStringField("color", hexColor);
+                        }
+                        gen.writeEndObject();
+
+                        gen.writeStringField("type", "Feature");
+
+                        gen.writeObjectFieldStart("geometry");
+                        gen.writeStringField("type", "LineString");
+                        gen.writeArrayFieldStart("coordinates");
+
+                        gen.writeStartArray();
+                        vcursor.seek(cursor.getFromVertex());
+                        gen.writeNumber(vcursor.getLon());
+                        gen.writeNumber(vcursor.getLat());
+                        gen.writeEndArray();
+
+                        gen.writeStartArray();
+                        vcursor.seek(cursor.getToVertex());
+                        gen.writeNumber(vcursor.getLon());
+                        gen.writeNumber(vcursor.getLat());
+                        gen.writeEndArray();
+
+                        gen.writeEndArray();
+
+                        gen.writeEndObject();
+                        gen.writeEndObject();
+                        return true;
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+                gen.writeEndArray();
+                gen.writeEndObject();
+
+                gen.flush();
+                gen.close();
+                os.close();
+
+                String json = os.toString();
+
+                return Response.ok(json, "application/json").build();
+            } catch (IOException io) {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            }
+        } else if ("permEdges".equals(layer)) {
+            //TODO: it would be useful to also return request entity too large if Envelope is too large
+            TIntSet streets = network.streetLayer.spatialIndex.query(env);
+
+            if (streets.size() > 10_000) {
+                LOG.warn("Refusing to include more than 10000 edges in result");
+                return Response.status(Response.Status.REQUEST_ENTITY_TOO_LARGE).build();
+            }
+
+            try {
+                // write geojson to response
+                ObjectMapper mapper = new ObjectMapper();
+                JsonFactory factory = mapper.getFactory();
+                OutputStream os = new ByteArrayOutputStream();
+                JsonGenerator gen = factory.createGenerator(os);
+
+                // geojson header
+                gen.writeStartObject();
+                gen.writeStringField("type", "FeatureCollection");
+
+                gen.writeArrayFieldStart("features");
+
+                EdgeStore.Edge cursor = network.streetLayer.edgeStore.getCursor();
+                VertexStore.Vertex vcursor = network.streetLayer.vertexStore.getCursor();
+
+                streets.forEach(s -> {
+                    try {
+                        cursor.seek(s);
+
+                        gen.writeStartObject();
+
+                        gen.writeObjectFieldStart("properties");
+                        if (detail) {
+                            gen.writeNumberField("osm_id", cursor.getOSMID());
+                            gen.writeStringField("name", cursor.getName());
+                            StreetTraversalPermission streetPermission = cursor.getPermissions();
+                            String label = getPermissionLabel(streetPermission);
+                            Color color = getPermissionColor(streetPermission);
+                            String hexColor = String
+                                .format("#%02x%02x%02x", color.getRed(), color.getGreen(),
+                                    color.getBlue());
+                            gen.writeStringField("label", label);
                             //gen.writeNumberField("speed_ms", speedMs);
                             gen.writeStringField("color", hexColor);
                         }

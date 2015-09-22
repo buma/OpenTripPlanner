@@ -15,13 +15,27 @@
           restService: "otp_networks/routers",
           routerId: "default"
       };
+	  //Those are layers and name of properties in a layer if detail=true
+	  var layers = {
+		  streetEdges:["name", "osm_id", "speed"],
+		  permEdges:["name", "osm_id", "label"]
+	  };
+	  var current_layer = "permEdges";
       var url = otp_config.hostname + '/' + otp_config.restService + '/' + otp_config.routerId + '/';
 
       function onEachFeature(feature, layer) {
           if (feature.properties) {
               var prop = feature.properties;
-
-              layer.bindPopup("<p>NAME:"+ prop.name +"<br />OSMID:"+prop.osm_id+"<br />SPEED:"+prop.speed+"</p>");
+			  var pop = "<p>";
+			  var layer_info = layers[current_layer];
+			  for (var i=0; i < layer_info.length; i++) {
+				  pop += layer_info[i].toUpperCase();
+				  pop +=": ";
+				  pop += prop[layer_info[i]];
+				  pop +="<br />";
+			  }
+			  pop +="</p>";
+              layer.bindPopup(pop);
           }
       }
 
@@ -54,7 +68,7 @@
         // add the street layer
         $.ajax({
           data: params,
-          url: url + 'visualize/streetEdges',
+          url: url + 'visualize/' + current_layer,
           success: function (data) {
               var layer = null;
               if (params.detail == true) {

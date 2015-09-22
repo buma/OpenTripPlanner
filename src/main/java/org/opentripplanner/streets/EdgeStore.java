@@ -502,6 +502,20 @@ public class EdgeStore implements Serializable {
         public boolean hasBogusName() {
             return getName().equals(EMPTY_NAME);
         }
+
+        public StreetTraversalPermission getPermissions() {
+            StreetTraversalPermission streetTraversalPermission = StreetTraversalPermission.NONE;
+            if (getFlag(Flag.ALLOWS_PEDESTRIAN)) {
+                streetTraversalPermission = streetTraversalPermission.add(StreetTraversalPermission.PEDESTRIAN);
+            }
+            if (getFlag(Flag.ALLOWS_CAR)) {
+                streetTraversalPermission = streetTraversalPermission.add(StreetTraversalPermission.CAR);
+            }
+            if (getFlag(Flag.ALLOWS_BIKE)) {
+                streetTraversalPermission = streetTraversalPermission.add(StreetTraversalPermission.BICYCLE);
+            }
+            return streetTraversalPermission;
+        }
     }
 
     public Edge getCursor() {
