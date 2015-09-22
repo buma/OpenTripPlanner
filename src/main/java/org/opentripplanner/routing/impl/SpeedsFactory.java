@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.opentripplanner.graph_builder.module.osm.OSMSpecifier;
 import org.opentripplanner.graph_builder.module.osm.SpeedPicker;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
+import org.opentripplanner.streets.permissions.TransportModeTreeItem;
 import org.opentripplanner.streets.permissions.USAPermissionsSetSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,7 @@ public class SpeedsFactory {
     private static final Logger LOG = LoggerFactory.getLogger(SpeedsFactory.class);
 
     private WayPropertySet props;
+    private final TransportModeTreeItem tree;
 
     //those two are only used for toString method
     //Converter from m/s to inputUnit
@@ -79,6 +81,7 @@ public class SpeedsFactory {
 
         final USAPermissionsSetSource usaPermissionsSetSource = new USAPermissionsSetSource(props);
         props = usaPermissionsSetSource.getWayPropertySet();
+        tree = usaPermissionsSetSource.getTransportModeHierarchyTree();
 
         this.unit = "mph";
         toUnit = METERS_PER_SECOND.getConverterTo(MILES_PER_HOUR);
@@ -94,6 +97,7 @@ public class SpeedsFactory {
     public SpeedsFactory(WayPropertySet propertySet, UnitConverter unitConverter, String unit) {
         final USAPermissionsSetSource usaPermissionsSetSource = new USAPermissionsSetSource(propertySet);
         this.props = usaPermissionsSetSource.getWayPropertySet();
+        this.tree = usaPermissionsSetSource.getTransportModeHierarchyTree();
         this.toUnit = unitConverter;
         this.unit = unit;
     }
@@ -223,5 +227,9 @@ public class SpeedsFactory {
 
     public WayPropertySet getProps() {
         return props;
+    }
+
+    public TransportModeTreeItem getTree() {
+        return tree;
     }
 }

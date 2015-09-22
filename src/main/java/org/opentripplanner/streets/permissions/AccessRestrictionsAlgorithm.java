@@ -21,6 +21,7 @@ import org.opentripplanner.graph_builder.module.osm.WayPropertySetSource;
 import org.opentripplanner.openstreetmap.model.IOSMWay;
 import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
+import org.opentripplanner.streets.OSMWay;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,12 +42,25 @@ import java.util.*;
  */
 public class AccessRestrictionsAlgorithm {
     private static final Logger LOG = LoggerFactory.getLogger(AccessRestrictionsAlgorithm.class);
-    TransportModeTreeItem transportModeHierarchy;
-    WayPropertySet wayPropertySet;
+    final TransportModeTreeItem transportModeHierarchy;
+    final WayPropertySet wayPropertySet;
+    final TransportModePermissions defaultTransportModePermissions;
 
     public AccessRestrictionsAlgorithm(WayPropertySetSource wayPropertySetSource, TransportModeHierarchyTree transportModeHierarchyTree) {
-        this.wayPropertySet = wayPropertySetSource.getWayPropertySet();
-        this.transportModeHierarchy = transportModeHierarchyTree.getTransportModeHierarchyTree();
+        this(wayPropertySetSource.getWayPropertySet(), transportModeHierarchyTree.getTransportModeHierarchyTree());
+    }
+
+    public AccessRestrictionsAlgorithm(WayPropertySet wayPropertySet,
+        TransportModeTreeItem transportModeHierarchyTree) {
+        this.wayPropertySet = wayPropertySet;
+        this.transportModeHierarchy = transportModeHierarchyTree;
+        defaultTransportModePermissions = getDefaultPermissions();
+    }
+
+    private TransportModePermissions getDefaultPermissions() {
+        OSMWay osmWay = new OSMWay();
+        osmWay.addTag("highway", "road");
+        return wayPropertySet.getDataForWay(osmWay).getModePermissions();
     }
 
     private void reset() {
@@ -62,6 +76,16 @@ public class AccessRestrictionsAlgorithm {
 
         WayProperties wayData = wayPropertySet.getDataForWay(way);
         LOG.info("Tags:{}", way.getTags());
+        EnumMap<TransportModeType, OSMAccessPermissions> nonInheritedPermissions;
+        if (wayData == null) {
+            LOG.warn("No waydata for road:{}", way.getTags());
+            nonInheritedPermissions = defaultTransportModePermissions.getNonInheritedPermissions();
+        } else if( wayData.getModePermissions() == null) {
+            LOG.warn("Waydata mode permissions is null:{}", way.getTags());
+            nonInheritedPermissions = defaultTransportModePermissions.getNonInheritedPermissions();
+        } else {
+            nonInheritedPermissions = wayData.getModePermissions().getNonInheritedPermissions();
+        }
         //Gets specific access for highway of way based on provided wayPropertySetSource
         LOG.info("wayData: {}", wayData.getModePermissions());
 
@@ -71,8 +95,6 @@ public class AccessRestrictionsAlgorithm {
         TransportModeTreeItem root = (TransportModeTreeItem) tree.getRoot();
         LOG.info("ROOT: {}", root);
         root.setPermission(OSMAccessPermissions.UNKNOWN);
-
-        EnumMap<TransportModeType, OSMAccessPermissions> nonInheritedPermissions = wayData.getModePermissions().getNonInheritedPermissions();
 
         EnumMap<TransportModeType, TransportModeTreeItem> usefulTransportModes = new EnumMap<>(
             TransportModeType.class);
@@ -101,13 +123,17 @@ public class AccessRestrictionsAlgorithm {
             LOG.info("TAG:{}", tag);
             TransportModeType transportModeType = TransportModeType.valueOf(
                 tag.key.toUpperCase(Locale.ENGLISH));
+            if (transportModeType == TransportModeType.BICYCLE && tag.value.toLowerCase().equals("use_sidepath")) {
+                specificPermissions.put(transportModeType, OSMAccessPermissions.NO);
+                continue;
+            }
             try {
                 OSMAccessPermissions osmAccessPermissions = OSMAccessPermissions
                     .valueOf(tag.value.toUpperCase(Locale.ENGLISH));
                 specificPermissions.put(transportModeType, osmAccessPermissions);
                 LOG.info("Added {} -> {}", transportModeType, osmAccessPermissions);
             } catch (IllegalArgumentException ial) {
-                LOG.warn("\"{}\" is not valid OSM access permission", tag.value);
+                LOG.warn("\"{}\" is not valid OSM access permission for {}", tag.value, tag.key);
             }
         }
 

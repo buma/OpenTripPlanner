@@ -14,9 +14,15 @@ import gnu.trove.map.hash.TLongIntHashMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.common.model.P2;
+import org.opentripplanner.graph_builder.module.osm.OSMFilter;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
+import org.opentripplanner.openstreetmap.model.OSMWithTags;
 import org.opentripplanner.reflect.ReflectionLibrary;
 import org.opentripplanner.standalone.GraphBuilderParameters;
+import org.opentripplanner.streets.permissions.AccessRestrictionsAlgorithm;
+import org.opentripplanner.streets.permissions.OSMAccessPermissions;
+import org.opentripplanner.streets.permissions.TransportModeType;
 import org.opentripplanner.transit.TransitLayer;
 import org.opentripplanner.util.WorldEnvelope;
 import org.slf4j.Logger;
@@ -84,6 +90,8 @@ public class StreetLayer implements Serializable {
 
     private transient WayPropertySet wayPropertySet;
 
+    private transient AccessRestrictionsAlgorithm accessRestrictionsAlgorithm;
+
     public StreetLayer(GraphBuilderParameters builderParameters) {
         //It can be null only in tests
         if (builderParameters == null) {
@@ -94,6 +102,8 @@ public class StreetLayer implements Serializable {
         }
         this.builderParameters = builderParameters;
         wayPropertySet = builderParameters.speedsFactory.getProps();
+        accessRestrictionsAlgorithm = new AccessRestrictionsAlgorithm(wayPropertySet, builderParameters.speedsFactory.getTree());
+
     }
 
     /** Load street layer from an OSM-lib OSM DB */
@@ -110,20 +120,17 @@ public class StreetLayer implements Serializable {
         this.osm = osm;
         for (Map.Entry<Long, Way> entry : osm.ways.entrySet()) {
             Way way = entry.getValue();
-            if ( ! (way.hasTag("highway") || way.hasTag("public_transport", "platform"))) {
+            OSMWay osmWay = new OSMWay(way);
+            if (!OSMFilter.isWayRoutable(osmWay)) {
                 continue;
             }
-
-            // don't allow users to use proposed infrastructure
-            if (way.hasTag("highway", "proposed"))
-                continue;
 
             int nEdgesCreated = 0;
             int beginIdx = 0;
             // Break each OSM way into topological segments between intersections, and make one edge per segment.
             for (int n = 1; n < way.nodes.length; n++) {
                 if (osm.intersectionNodes.contains(way.nodes[n]) || n == (way.nodes.length - 1)) {
-                    makeEdge(way, beginIdx, n, entry.getKey());
+                    makeEdge(osmWay, beginIdx, n, entry.getKey());
                     nEdgesCreated += 1;
                     beginIdx = n;
                 }
@@ -196,15 +203,17 @@ public class StreetLayer implements Serializable {
     /**
      * Make an edge for a sub-section of an OSM way, typically between two intersections or dead ends.
      */
-    private void makeEdge(Way way, int beginIdx, int endIdx, Long osmID) {
+    private void makeEdge(OSMWay osmWay, int beginIdx, int endIdx, Long osmID) {
 
-        OSMWay osmWay = new OSMWay(way);
 
         int streetMaxSpeedForward = getIntCarSpeedForWay(osmWay, false);
         int streetMaxSpeedBackward = getIntCarSpeedForWay(osmWay, true);
 
-        long beginOsmNodeId = way.nodes[beginIdx];
-        long endOsmNodeId = way.nodes[endIdx];
+        P2<EnumMap<TransportModeType, OSMAccessPermissions>> permissions = accessRestrictionsAlgorithm
+        .getPermissions(osmWay);
+
+        long beginOsmNodeId = osmWay.nodes[beginIdx];
+        long endOsmNodeId = osmWay.nodes[endIdx];
 
         // Will create mapping if it doesn't exist yet.
         int beginVertexIndex = getVertexIndexForOsmNode(beginOsmNodeId);
@@ -214,7 +223,7 @@ public class StreetLayer implements Serializable {
         int nNodes = endIdx - beginIdx + 1;
         List<Node> nodes = new ArrayList<>(nNodes);
         for (int n = beginIdx; n <= endIdx; n++) {
-            long nodeId = way.nodes[n];
+            long nodeId = osmWay.nodes[n];
             Node node = osm.nodes.get(nodeId);
             nodes.add(node);
         }
@@ -226,10 +235,11 @@ public class StreetLayer implements Serializable {
             return;
         }
 
-        String name = way.getTag("name");
+        String name = osmWay.getTag("name");
 
         // Create and store the forward and backward edge
-        EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex, edgeLengthMillimeters, osmID, name, streetMaxSpeedForward, streetMaxSpeedBackward);
+        EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex,
+            edgeLengthMillimeters, osmID, name, streetMaxSpeedForward, streetMaxSpeedBackward, permissions);
         newForwardEdge.setGeometry(nodes);
         pointsPerEdgeHistogram.add(nNodes);
 
@@ -357,7 +367,7 @@ public class StreetLayer implements Serializable {
         // Make a second, new bidirectional edge pair after the split and add it to the spatial index.
         // New edges will be added to edge lists later (the edge list is a transient index).
         EdgeStore.Edge newEdge = edgeStore.addStreetPair(newVertexIndex, oldToVertex, split.distance1_mm,
-            edge.getOSMID(), edge.getName(), forwardSpeed, backwardSpeed);
+            edge.getOSMID(), edge.getName(), forwardSpeed, backwardSpeed, null);
         spatialIndex.insert(newEdge.getEnvelope(), newEdge.edgeIndex);
         // TODO newEdge.copyFlagsFrom(edge) to match the existing edge...
         return newVertexIndex;

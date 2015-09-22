@@ -12,6 +12,10 @@ import gnu.trove.map.hash.TLongObjectHashMap;
 import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TLongHashSet;
 import org.opentripplanner.common.geometry.GeometryUtils;
+import org.opentripplanner.common.model.P2;
+import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
+import org.opentripplanner.streets.permissions.OSMAccessPermissions;
+import org.opentripplanner.streets.permissions.TransportModeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -171,7 +175,8 @@ public class EdgeStore implements Serializable {
      * @return a cursor pointing to the forward edge in the pair, which always has an even index.
      */
     public Edge addStreetPair(int beginVertexIndex, int endVertexIndex, int edgeLengthMillimeters,
-        long osmID, String name, int streetMaxSpeedForward, int streetMaxSpeedBackward) {
+        long osmID, String name, int streetMaxSpeedForward, int streetMaxSpeedBackward,
+        P2<EnumMap<TransportModeType, OSMAccessPermissions>> permissions) {
 
         // Store only one length, set of endpoints, and intermediate geometry per pair of edges.
         lengths_mm.add(edgeLengthMillimeters);
@@ -188,17 +193,52 @@ public class EdgeStore implements Serializable {
 
         // Forward edge
         speeds.add(streetMaxSpeedForward);
-        flags.add(0);
+        if (permissions != null) {
+            flags.add(getPermissionFlags(permissions.first));
+        } else {
+            flags.add(0);
+        }
 
         // Backward edge
         speeds.add(streetMaxSpeedBackward);
-        flags.add(0);
+        if (permissions != null) {
+            flags.add(getPermissionFlags(permissions.second));
+        } else {
+            flags.add(0);
+        }
 
         // Increment total number of edges created so far, and return the index of the first new edge.
         int forwardEdgeIndex = nEdges;
         nEdges += 2;
         return getCursor(forwardEdgeIndex);
 
+    }
+
+    /**
+     * From map of transportModeTypes and OSM access permissions sets permission flags on current edge
+     *
+     * @param permissions
+     * @return integer which represents set flags
+     */
+    private int getPermissionFlags(EnumMap<TransportModeType, OSMAccessPermissions> permissions) {
+        int start = 0;
+        //TODO move this to the initialization
+        EnumMap<TransportModeType, Flag> transportModeFlag = new EnumMap<>(TransportModeType.class);
+        transportModeFlag.put(TransportModeType.MOTORCAR, Flag.ALLOWS_CAR);
+        transportModeFlag.put(TransportModeType.FOOT, Flag.ALLOWS_PEDESTRIAN);
+        transportModeFlag.put(TransportModeType.BICYCLE, Flag.ALLOWS_BIKE);
+        for (final Map.Entry<TransportModeType, OSMAccessPermissions> entry : permissions.entrySet()) {
+            if (transportModeFlag.containsKey(entry.getKey())) {
+                Flag flag = transportModeFlag.get(entry.getKey());
+                if (!(entry.getValue() == OSMAccessPermissions.NO
+                    || entry.getValue() == OSMAccessPermissions.DISMOUNT)) {
+                    start |=flag.flag;
+                }
+            } else {
+                LOG.warn("Unknown transport mode:{}", entry.getKey());
+            }
+        }
+        return start;
     }
 
     /** Inner class that serves as a cursor: points to a single edge in this store, and can be moved to other indexes. */
