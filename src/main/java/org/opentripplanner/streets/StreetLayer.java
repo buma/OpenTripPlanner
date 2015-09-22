@@ -14,6 +14,7 @@ import gnu.trove.map.hash.TLongIntHashMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
 import org.opentripplanner.reflect.ReflectionLibrary;
 import org.opentripplanner.standalone.GraphBuilderParameters;
 import org.opentripplanner.transit.TransitLayer;
@@ -81,6 +82,8 @@ public class StreetLayer implements Serializable {
 
     public TransitLayer linkedTransitLayer = null;
 
+    private transient WayPropertySet wayPropertySet;
+
     public StreetLayer(GraphBuilderParameters builderParameters) {
         //It can be null only in tests
         if (builderParameters == null) {
@@ -90,6 +93,7 @@ public class StreetLayer implements Serializable {
 
         }
         this.builderParameters = builderParameters;
+        wayPropertySet = builderParameters.speedsFactory.getProps();
     }
 
     /** Load street layer from an OSM-lib OSM DB */
@@ -176,16 +180,28 @@ public class StreetLayer implements Serializable {
     }
 
     /**
+     * Gets car speed from maxspeed tags. Or from default values based on highway type if they are missing.
+     *
+     * Speeds are set in JSON config and read in {@link org.opentripplanner.routing.impl.SpeedsFactory}
+     *
+     * @param way
+     * @param backward if true way is looked in reverse direction of geometry (maxspeed:backward etc)
+     * @return integer with same fixed factor as latitudes/longitudes in Vertex. Otherwise speed is in m/s.
+     */
+    int getIntCarSpeedForWay(OSMWay way, boolean backward) {
+        return (int) (wayPropertySet.getCarSpeedForWay(way, backward)
+            * VertexStore.FIXED_FACTOR);
+    }
+
+    /**
      * Make an edge for a sub-section of an OSM way, typically between two intersections or dead ends.
      */
     private void makeEdge(Way way, int beginIdx, int endIdx, Long osmID) {
 
         OSMWay osmWay = new OSMWay(way);
 
-        int streetMaxSpeedForward = (int)(builderParameters.speedsFactory.getProps().getCarSpeedForWay(
-            osmWay, false) * VertexStore.FIXED_FACTOR);
-        int streetMaxSpeedBackward = (int)(builderParameters.speedsFactory.getProps().getCarSpeedForWay(
-            osmWay, true) * VertexStore.FIXED_FACTOR);
+        int streetMaxSpeedForward = getIntCarSpeedForWay(osmWay, false);
+        int streetMaxSpeedBackward = getIntCarSpeedForWay(osmWay, true);
 
         long beginOsmNodeId = way.nodes[beginIdx];
         long endOsmNodeId = way.nodes[endIdx];
