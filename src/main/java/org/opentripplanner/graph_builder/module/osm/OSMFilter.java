@@ -41,7 +41,7 @@ public class OSMFilter {
      * (as well as ways where all access is specifically forbidden to the public).
      * http://wiki.openstreetmap.org/wiki/Tag:highway%3Dproposed
      */
-    public static boolean isWayRoutable(OSMWithTags way) {
+    public static boolean isWayRoutable(IOSMWithTags way) {
         if (!isOsmEntityRoutable(way))
             return false;
 
@@ -69,7 +69,7 @@ public class OSMFilter {
      * usage=tourism. This prevents miniature tourist railways like the one in Portland's Zoo from
      * receiving a better score and pulling search endpoints away from real transit stops.
      */
-    public static boolean isOsmEntityRoutable(OSMWithTags osmEntity) {
+    public static boolean isOsmEntityRoutable(IOSMWithTags osmEntity) {
         if (osmEntity.hasTag("highway"))
             return true;
         if (osmEntity.isTag("public_transport", "platform")
