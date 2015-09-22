@@ -14,10 +14,12 @@
 package org.opentripplanner.streets.permissions;
 
 import com.conveyal.osmlib.OSMEntity;
+import org.opentripplanner.common.model.P2;
 import org.opentripplanner.graph_builder.module.osm.WayProperties;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySetSource;
 import org.opentripplanner.openstreetmap.model.IOSMWay;
+import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +49,16 @@ public class AccessRestrictionsAlgorithm {
         this.transportModeHierarchy = transportModeHierarchyTree.getTransportModeHierarchyTree();
     }
 
+    private void reset() {
+        TransportModeTreeItem root = (TransportModeTreeItem) transportModeHierarchy.getRoot();
+        for (Enumeration bfsTree = root.breadthFirstEnumeration(); bfsTree.hasMoreElements();) {
+            TransportModeTreeItem currentLeaf = (TransportModeTreeItem) bfsTree.nextElement();
+            currentLeaf.setPermission(OSMAccessPermissions.UNKNOWN);
+        }
+    }
+
     public EnumMap<TransportModeType, OSMAccessPermissions> calculateWayPermissions(IOSMWay way) {
+        reset();
 
         WayProperties wayData = wayPropertySet.getDataForWay(way);
         LOG.info("Tags:{}", way.getTags());
@@ -125,6 +136,63 @@ public class AccessRestrictionsAlgorithm {
 
         return permissionsMap;
     }
+
+    //TODO: it would be much smarted to do this when we still have a labeled tree
+    public P2<EnumMap<TransportModeType, OSMAccessPermissions>> getPermissions(IOSMWay way) {
+        EnumMap<TransportModeType, OSMAccessPermissions> permissions = calculateWayPermissions(way);
+
+        EnumMap<TransportModeType, OSMAccessPermissions> permissionsFront = new EnumMap<>(permissions);
+        EnumMap<TransportModeType, OSMAccessPermissions> permissionsBack = new EnumMap<>(permissions);
+
+        if (way.isOneWayForwardDriving() || way.isRoundabout()) {
+            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+            permissionsBack.replace(TransportModeType.MOTORCAR, OSMAccessPermissions.NO);
+        }
+
+        if (way.isOneWayReverseDriving()) {
+            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+            permissionsFront.replace(TransportModeType.MOTORCAR, OSMAccessPermissions.NO);
+        }
+
+        if (way.isOneWayForwardBicycle()) {
+            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+        }
+
+        if (way.isOneWayReverseBicycle()) {
+            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+        }
+
+        // TODO(flamholz): figure out what this is for.
+        String oneWayBicycle = way.getTag("oneway:bicycle");
+        if (IOSMWithTags.isFalse(oneWayBicycle) || way.isTagTrue("bicycle:backwards")) {
+            if (permissions.get(TransportModeType.BICYCLE)==OSMAccessPermissions.YES) {
+                permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.YES);
+                permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.YES);
+            }
+        }
+
+        //This needs to be after adding permissions for oneway:bicycle=no
+        //removes bicycle permission when bicycles need to use sidepath
+        //TAG: bicycle:forward=use_sidepath
+        if (way.isForwardDirectionSidepath()) {
+            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+        }
+
+        //TAG bicycle:backward=use_sidepath
+        if (way.isReverseDirectionSidepath()) {
+            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+        }
+
+        if (way.isOpposableCycleway()) {
+            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.YES);
+        }
+
+        //TODO: sidewalk support
+
+        return new P2<EnumMap<TransportModeType, OSMAccessPermissions>>(permissionsFront, permissionsBack);
+    }
+
+
 
     /**
      * Converts permissions from map to StreetTraversalPermission which is used in tests

@@ -193,7 +193,7 @@ public class OSMFilter {
      * for travel along and against the way.
      */
     public static P2<StreetTraversalPermission> getPermissions(
-            StreetTraversalPermission permissions, OSMWay way) {
+            StreetTraversalPermission permissions, IOSMWay way) {
 
         StreetTraversalPermission permissionsFront = permissions;
         StreetTraversalPermission permissionsBack = permissions;

@@ -53,7 +53,7 @@ public class OSMEntityWayTest {
     }
 
     private P2<StreetTraversalPermission> getWayProperties(
-        org.opentripplanner.openstreetmap.model.OSMWay way) {
+        IOSMWay way) {
         StreetTraversalPermission permissions = getWayPermissions(way);
         return OSMFilter.getPermissions(permissions,
             way);
@@ -72,6 +72,14 @@ public class OSMEntityWayTest {
         return AccessRestrictionsAlgorithm.convertPermission(mapPermissions);
     }
 
+    private P2<StreetTraversalPermission> calculateWayProperties(
+        IOSMWay way
+    ) {
+        P2<EnumMap<TransportModeType, OSMAccessPermissions>> permission = accessRestrictionsAlgorithm
+            .getPermissions(way);
+        return new P2<StreetTraversalPermission>(AccessRestrictionsAlgorithm.convertPermission(permission.first), AccessRestrictionsAlgorithm.convertPermission(permission.second));
+    }
+
     /*private P2<StreetTraversalPermission> calculateWayPermissions(
 
     )*/
@@ -85,6 +93,18 @@ public class OSMEntityWayTest {
         osmWay.addTag("access", "destination");
         assertEquals(getWayPermissions(osmWay), calculateWayPermissions(osmWay));
 
+    }
+
+    @Test
+    public void testOnewayPermissions() {
+        OSMWay osmWay = new OSMWay();
+        osmWay.addTag("highway", "residential");
+        osmWay.addTag("oneway", "true");
+        osmWay.addTag("oneway:bicycle", "no");
+
+        final P2<StreetTraversalPermission> wayProperties = getWayProperties(osmWay);
+        LOG.info("Oneway:{}", wayProperties);
+        assertEquals(wayProperties, calculateWayProperties(osmWay));
     }
 
     @Test
