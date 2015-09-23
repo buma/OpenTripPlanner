@@ -483,8 +483,15 @@ public class EdgeStore implements Serializable {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("Edge (%d) from %d to %d. Length %f meters, speed %d kph.",
-                getOSMID(), getFromVertex(), getToVertex(), getLengthMm() / 1000D, getSpeed()));
+            String direction;
+            if (isForward()) {
+                direction = "F";
+            } else {
+                direction = "B";
+            }
+            sb.append(String.format("%s Edge (osm:%d|%d) from %d to %d. Length %f meters, speed %f kph.",
+                direction, getOSMID(), edgeIndex, getFromVertex(), getToVertex(), getLengthM(),
+                (getSpeed() / VertexStore.FIXED_FACTOR)*3.6));
             for (Flag flag : Flag.values()) {
                 if (getFlag(flag)) {
                     sb.append(" ");
