@@ -354,14 +354,20 @@ public class StreetLayer implements Serializable {
 
         //Makes sure that correct speed is get from forward/reverse edge.
         int forwardSpeed, backwardSpeed;
+        int forwardFlags, backwardFlags;
+
         if (edge.isBackward()) {
             backwardSpeed = edge.getSpeed();
             EdgeStore.Edge reverseEdge = edgeStore.getCursor(split.edge-1);
             forwardSpeed = reverseEdge.getSpeed();
+            backwardFlags = edge.getFlags();
+            forwardFlags = reverseEdge.getFlags();
         } else {
             forwardSpeed = edge.getSpeed();
             EdgeStore.Edge reverseEdge = edgeStore.getCursor(split.edge+1);
             backwardSpeed = reverseEdge.getSpeed();
+            forwardFlags = edge.getFlags();
+            backwardFlags = reverseEdge.getFlags();
         }
 
         // Make a second, new bidirectional edge pair after the split and add it to the spatial index.
@@ -369,7 +375,10 @@ public class StreetLayer implements Serializable {
         EdgeStore.Edge newEdge = edgeStore.addStreetPair(newVertexIndex, oldToVertex, split.distance1_mm,
             edge.getOSMID(), edge.getName(), forwardSpeed, backwardSpeed, null);
         spatialIndex.insert(newEdge.getEnvelope(), newEdge.edgeIndex);
-        // TODO newEdge.copyFlagsFrom(edge) to match the existing edge...
+        //Copies correct flags to new forward and backward edge
+        newEdge.setFlags(forwardFlags);
+        newEdge.advance();
+        newEdge.setFlags(backwardFlags);
         return newVertexIndex;
 
         // TODO store street-to-stop distance in a table in TransitLayer. This also allows adjusting for subway entrances etc.

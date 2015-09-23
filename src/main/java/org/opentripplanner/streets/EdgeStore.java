@@ -315,6 +315,13 @@ public class EdgeStore implements Serializable {
         }
 
         /**
+         * Used when copying flags from previous edge during splitting.
+         * @return raw integer which represents all flags.
+         */
+        int getFlags() {
+            return flags.get(edgeIndex);
+        }
+        /**
          * Returns length of edge in meters
          * @return
          */
@@ -515,6 +522,14 @@ public class EdgeStore implements Serializable {
                 streetTraversalPermission = streetTraversalPermission.add(StreetTraversalPermission.BICYCLE);
             }
             return streetTraversalPermission;
+        }
+
+        /**
+         * Used when copying flags from previous edge during splitting.
+         * sets flags from raw integer which represents all flags.
+         */
+        void setFlags(int _flags) {
+            flags.set(edgeIndex, _flags);
         }
     }
 
