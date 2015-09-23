@@ -156,6 +156,10 @@ import static javax.measure.unit.NonSI.KILOMETERS_PER_HOUR;
                 streets.forEach(s -> {
                     try {
                         cursor.seek(s);
+                        //skips edges which are actually outside envelope
+                        if (!(env.intersects(cursor.getEnvelope()))){
+                            return true;
+                        }
 
                         gen.writeStartObject();
 
@@ -245,6 +249,10 @@ import static javax.measure.unit.NonSI.KILOMETERS_PER_HOUR;
                 streets.forEach(s -> {
                     try {
                         cursor.seek(s);
+                        //skips edges which are actually outside envelope
+                        if (!(env.intersects(cursor.getEnvelope()))){
+                            return true;
+                        }
 
                         gen.writeStartObject();
 
