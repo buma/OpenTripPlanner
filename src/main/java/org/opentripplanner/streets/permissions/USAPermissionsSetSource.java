@@ -33,65 +33,41 @@ public class USAPermissionsSetSource extends CountryPermissionsSetSource impleme
         this.wayPropertySet = wayPropertySet;
 
         TransportModePermissions motorwayPermissions = new TransportModePermissions();
-        motorwayPermissions.add(
-            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV },
-            OSMAccessPermissions.YES);
+
         motorwayPermissions.add(
             new TransportModeType[] { TransportModeType.MOPED, TransportModeType.HORSE,
                 TransportModeType.BICYCLE, TransportModeType.FOOT }, OSMAccessPermissions.NO);
 
-        TransportModePermissions otherStreets = new TransportModePermissions();
-        otherStreets.add(
-            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED,
-                TransportModeType.HORSE, TransportModeType.BICYCLE, TransportModeType.FOOT },
-            OSMAccessPermissions.YES);
 
         TransportModePermissions pedestrian = new TransportModePermissions();
-        pedestrian.add(new TransportModeType[]{TransportModeType.MOTORCAR,
-                TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV,
-                TransportModeType.MOPED, TransportModeType.HORSE},
-            OSMAccessPermissions.NO);
+
         pedestrian.add(new TransportModeType[]{ TransportModeType.FOOT, TransportModeType.BICYCLE},
             OSMAccessPermissions.YES);
 
         TransportModePermissions path = new TransportModePermissions();
-        path.add(new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV },
-            OSMAccessPermissions.NO);
+
         path.add(new TransportModeType[] {TransportModeType.MOPED, TransportModeType.HORSE, TransportModeType.BICYCLE,
             TransportModeType.FOOT }, OSMAccessPermissions.YES);
 
         TransportModePermissions bridleway = new TransportModePermissions();
-        bridleway.add(
-            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED
-                 },
-            OSMAccessPermissions.NO);
+
         bridleway.add(TransportModeType.HORSE, OSMAccessPermissions.DESIGNATED);
         bridleway.add(new TransportModeType[]{TransportModeType.BICYCLE, TransportModeType.FOOT}, OSMAccessPermissions.YES);
 
         TransportModePermissions cycleway = new TransportModePermissions();
-        cycleway.add(new TransportModeType[]{TransportModeType.MOTORCAR,
-            TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV,
-            TransportModeType.MOPED, TransportModeType.HORSE}, OSMAccessPermissions.NO);
+
         cycleway.add(TransportModeType.BICYCLE, OSMAccessPermissions.DESIGNATED);
         cycleway.add(TransportModeType.FOOT, OSMAccessPermissions.YES);
 
         TransportModePermissions footway = new TransportModePermissions();
-        footway.add(TransportModeType.ACCESS, OSMAccessPermissions.NO);
-        footway.add(
-            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED,
-                TransportModeType.HORSE, TransportModeType.BICYCLE },
-            OSMAccessPermissions.NO);
+
         footway.add(TransportModeType.FOOT, OSMAccessPermissions.DESIGNATED);
 
         replaceProperties("motorway", motorwayPermissions);
-        replaceProperties(
+        //Same as default
+        /*replaceProperties(
             "trunk|primary|secondary|tertiary|unclassified|residential|living_street|road",
-            otherStreets);
+            otherStreets);*/
         replaceProperties("pedestrian", pedestrian);
         replaceProperties("path", path);
         replaceProperties("bridleway", bridleway);
