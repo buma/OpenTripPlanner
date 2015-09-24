@@ -154,7 +154,9 @@ public class EdgeStore implements Serializable {
         STAIRS(6),
         PLATFORM(7),
         BOGUS_NAME(8),
-        NO_THRU_TRAFFIC(9),
+        NO_THRU_TRAFFIC_PEDESTRIAN(9),
+        NO_THRU_TRAFFIC_BIKE(20),
+        NO_THRU_TRAFFIC_CAR(21),
         SLOPE_OVERRIDE(10),
         TRANSIT_LINK(11), // This edge is a one-way connection from a street to a transit stop. Target is a transit stop index, not an intersection index.
         // Permissions
@@ -227,12 +229,22 @@ public class EdgeStore implements Serializable {
         transportModeFlag.put(TransportModeType.MOTORCAR, Flag.ALLOWS_CAR);
         transportModeFlag.put(TransportModeType.FOOT, Flag.ALLOWS_PEDESTRIAN);
         transportModeFlag.put(TransportModeType.BICYCLE, Flag.ALLOWS_BIKE);
+
+        EnumMap<TransportModeType, Flag> transportModeNoThruTrafficFlag = new EnumMap<>(TransportModeType.class);
+        transportModeNoThruTrafficFlag.put(TransportModeType.MOTORCAR, Flag.NO_THRU_TRAFFIC_CAR);
+        transportModeNoThruTrafficFlag.put(TransportModeType.FOOT, Flag.NO_THRU_TRAFFIC_PEDESTRIAN);
+        transportModeNoThruTrafficFlag.put(TransportModeType.BICYCLE, Flag.NO_THRU_TRAFFIC_BIKE);
+
         for (final Map.Entry<TransportModeType, OSMAccessPermissions> entry : permissions.entrySet()) {
             if (transportModeFlag.containsKey(entry.getKey())) {
                 Flag flag = transportModeFlag.get(entry.getKey());
                 if (!(entry.getValue() == OSMAccessPermissions.NO
                     || entry.getValue() == OSMAccessPermissions.DISMOUNT)) {
                     start |=flag.flag;
+                }
+                Flag thru_traffic = transportModeNoThruTrafficFlag.get(entry.getKey());
+                if (entry.getValue() == OSMAccessPermissions.PRIVATE || entry.getValue() == OSMAccessPermissions.DESTINATION) {
+                    start |= thru_traffic.flag;
                 }
             } else {
                 LOG.warn("Unknown transport mode:{}", entry.getKey());
