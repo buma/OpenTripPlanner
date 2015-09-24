@@ -128,8 +128,8 @@ public class AccessRestrictionsAlgorithm {
                 continue;
             }
             try {
-                OSMAccessPermissions osmAccessPermissions = OSMAccessPermissions
-                    .valueOf(tag.value.toUpperCase(Locale.ENGLISH));
+                OSMAccessPermissions osmAccessPermissions = OSMAccessPermissions.toPermission(
+                    tag.value.toLowerCase(Locale.ENGLISH));
                 specificPermissions.put(transportModeType, osmAccessPermissions);
                 LOG.info("Added {} -> {}", transportModeType, osmAccessPermissions);
             } catch (IllegalArgumentException ial) {
