@@ -21,6 +21,7 @@ import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
  * Changes:
  * - Trunk, trunk_link doesn't allow moped, horse, bicycle and foot
  * - highway=footway allows cycling
+ * - highway=footway footway=sidewalk allows only foot
  * Created by mabu on 24.9.2015.
  */
 public class PortlandPermissionsSetSource extends USAPermissionsSetSource {
@@ -42,7 +43,12 @@ public class PortlandPermissionsSetSource extends USAPermissionsSetSource {
         footway.add(TransportModeType.FOOT, OSMAccessPermissions.DESIGNATED);
         footway.add(TransportModeType.BICYCLE, OSMAccessPermissions.YES);
 
+        TransportModePermissions sidewalk = new TransportModePermissions();
+        sidewalk.add(TransportModeType.ACCESS, OSMAccessPermissions.NO);
+        sidewalk.add(TransportModeType.FOOT, OSMAccessPermissions.DESIGNATED);
+
         replaceProperties("trunk", trunkPermissions);
         replaceProperties("footway", footway);
+        replaceProperties("footway=sidewalk;highway=footway", sidewalk);
     }
 }

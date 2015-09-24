@@ -19,14 +19,12 @@ import org.opentripplanner.common.model.P2;
 import org.opentripplanner.graph_builder.module.osm.*;
 import org.opentripplanner.openstreetmap.model.*;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.streets.permissions.AccessRestrictionsAlgorithm;
-import org.opentripplanner.streets.permissions.OSMAccessPermissions;
-import org.opentripplanner.streets.permissions.TransportModeType;
-import org.opentripplanner.streets.permissions.USAPermissionsSetSource;
+import org.opentripplanner.streets.permissions.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.EnumMap;
+import java.util.Map;
 
 import static org.junit.Assert.*;
 
@@ -45,18 +43,22 @@ public class OSMEntityWayTest {
         DefaultWayPropertySetSource defaultWayPropertySetSource = new DefaultWayPropertySetSource();
         wayPropertySet = defaultWayPropertySetSource.getWayPropertySet();
 
-        USAPermissionsSetSource usaPermissionsSetSource = new USAPermissionsSetSource();
-        newWayPropertySet = usaPermissionsSetSource.getWayPropertySet();
+        PortlandPermissionsSetSource portlandPermissionsSetSource = new PortlandPermissionsSetSource();
+        newWayPropertySet = portlandPermissionsSetSource.getWayPropertySet();
 
-        accessRestrictionsAlgorithm = new AccessRestrictionsAlgorithm(usaPermissionsSetSource, usaPermissionsSetSource);
+        accessRestrictionsAlgorithm = new AccessRestrictionsAlgorithm(portlandPermissionsSetSource, portlandPermissionsSetSource);
+
+        LOG.info("Current default highway permissions:");
+        for (Map.Entry<OSMSpecifier, TransportModePermissions> entry : portlandPermissionsSetSource.getPermissionsForRoadType().entrySet()) {
+            LOG.info("TAG:{} modes:{}", entry.getKey(), entry.getValue().getNonInheritedPermissions());
+        }
 
     }
 
     private P2<StreetTraversalPermission> getWayProperties(
         IOSMWay way) {
         StreetTraversalPermission permissions = getWayPermissions(way);
-        return OSMFilter.getPermissions(permissions,
-            way);
+        return OSMFilter.getPermissions(permissions, way);
     }
 
     private StreetTraversalPermission getWayPermissions(
@@ -112,5 +114,60 @@ public class OSMEntityWayTest {
         OSMWay osmWay = new OSMWay();
         osmWay.addTag("highway", "living_street");
         assertEquals(StreetTraversalPermission.ALL, calculateWayPermissions(osmWay));
+    }
+
+    @Test
+    public void testPath() throws Exception {
+        OSMWay osmWay = makeOSMWayFromTags("highway=path;access=private");
+        final P2<StreetTraversalPermission> wayProperties = getWayProperties(osmWay);
+        LOG.info("Path:{}", wayProperties);
+        assertEquals(wayProperties, calculateWayProperties(osmWay));
+    }
+
+    @Test
+    public void testPlatform() throws Exception {
+        OSMWay osmWay = makeOSMWayFromTags("highway=platform;public_transport=platform");
+        final P2<StreetTraversalPermission> wayProperties = getWayProperties(osmWay);
+        LOG.info("Platform:{}", wayProperties);
+        assertEquals(wayProperties, calculateWayProperties(osmWay));
+    }
+
+    @Test
+    public void testSidewalk() throws Exception {
+        OSMWay osmWay = new OSMWay();
+        osmWay.addTag("highway", "footway");
+        P2<StreetTraversalPermission> wayProperties = getWayProperties(osmWay);
+        LOG.info("Footway:{}", wayProperties);
+        assertEquals(wayProperties, calculateWayProperties(osmWay));
+
+        osmWay = makeOSMWayFromTags("footway=sidewalk;highway=footway");
+        wayProperties = getWayProperties(osmWay);
+        LOG.info("Sidewalk:{}", wayProperties);
+        assertEquals(wayProperties, calculateWayProperties(osmWay));
+    }
+
+
+    private static P2<StreetTraversalPermission> makePermissionsFromString(String orig_permissions) {
+        String permissions = orig_permissions.replace("P2(", "").replace(")", "");
+        String[] permission = permissions.split(",", 2);
+        StreetTraversalPermission first = StreetTraversalPermission.valueOf(permission[0].trim());
+        StreetTraversalPermission second = StreetTraversalPermission.valueOf(permission[1].trim());
+
+        P2<StreetTraversalPermission> P2persmisions = P2.createPair(first, second);
+
+        if (!P2persmisions.toString().equals(orig_permissions)) {
+            throw new IllegalArgumentException("Permissions couldn't be converted to P2: " + permissions);
+        }
+        return P2persmisions;
+    }
+
+    private static OSMWay makeOSMWayFromTags(String tags) {
+        OSMWay osmWay = new OSMWay();
+        String[] pairs = tags.split(";");
+        for (String pair : pairs) {
+            String[] kv = pair.split("=");
+            osmWay.addTag(kv[0], kv[1]);
+        }
+        return osmWay;
     }
 }
