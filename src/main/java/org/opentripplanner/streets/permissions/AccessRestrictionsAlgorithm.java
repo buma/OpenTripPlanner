@@ -231,20 +231,20 @@ public class AccessRestrictionsAlgorithm {
         for (final Map.Entry<TransportModeType, OSMAccessPermissions> map : mapPermissions.entrySet()) {
             OSMAccessPermissions permissions = map.getValue();
             if (map.getKey() == TransportModeType.FOOT) {
-                if (permissions != OSMAccessPermissions.NO) {
+                if (!(permissions == OSMAccessPermissions.NO || permissions == OSMAccessPermissions.PRIVATE)) {
                     permission = permission.add(StreetTraversalPermission.PEDESTRIAN);
                 }
             } else if (map.getKey() == TransportModeType.BICYCLE) {
-                if (!(permissions == OSMAccessPermissions.NO || permissions == OSMAccessPermissions.DISMOUNT)) {
+                if (!(permissions == OSMAccessPermissions.NO || permissions == OSMAccessPermissions.PRIVATE ||
+                    permissions == OSMAccessPermissions.DISMOUNT)) {
                     permission = permission.add(StreetTraversalPermission.BICYCLE);
                 }
             } else if (map.getKey() == TransportModeType.MOTORCAR) {
-                if (permissions != OSMAccessPermissions.NO) {
+                if (!(permissions == OSMAccessPermissions.NO || permissions == OSMAccessPermissions.PRIVATE)) {
                     permission = permission.add(StreetTraversalPermission.CAR);
                 }
             }
         }
-
         return permission;
     }
 }
