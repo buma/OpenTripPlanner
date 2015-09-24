@@ -49,10 +49,7 @@ public class OSMWithTags implements IOSMWithTags {
         if (_tags == null) {
             return new ArrayList<OSMEntity.Tag>();
         }
-        Set<String> permission_tags = new HashSet<>(TransportModeType.values().length);
-        for (TransportModeType modeType : TransportModeType.values()) {
-            permission_tags.add(modeType.toString().toLowerCase());
-        }
+        Set<String> permission_tags = TransportModeType.getPermissionTagKeys();
 
         List<OSMEntity.Tag> tags = new ArrayList<>(_tags.size());
         for (final Map.Entry<String, String> entry : _tags.entrySet()) {

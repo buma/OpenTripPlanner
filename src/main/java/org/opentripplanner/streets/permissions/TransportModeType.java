@@ -1,5 +1,9 @@
 package org.opentripplanner.streets.permissions;
 
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+
 /**
  * This is for Transport mode hierarchy graph
  * from https://wiki.openstreetmap.org/wiki/File:TransportModeHierarchy.png
@@ -20,5 +24,18 @@ public enum  TransportModeType {
     MOTORCAR,
     PSV,
     TAXI,
-    BUS
+    BUS;
+
+    private static final Set<String> permissionTagKeys;
+
+    static {
+        permissionTagKeys = new HashSet<>(TransportModeType.values().length);
+        for (TransportModeType modeType : TransportModeType.values()) {
+            permissionTagKeys.add(modeType.toString().toLowerCase(Locale.ENGLISH));
+        }
+    }
+
+    public static Set<String> getPermissionTagKeys() {
+        return permissionTagKeys;
+    }
 }

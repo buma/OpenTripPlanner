@@ -104,14 +104,11 @@ abstract class OSMEntityWithTags extends OSMEntity implements IOSMWithTags {
         if (hasNoTags()) {
             return new ArrayList<>();
         }
-        Set<String> permissionTagKeys = new HashSet<>(TransportModeType.values().length);
-        for (TransportModeType modeType : TransportModeType.values()) {
-            permissionTagKeys.add(modeType.toString().toLowerCase());
-        }
+        Set<String> permissionTagKeys = TransportModeType.getPermissionTagKeys();
 
         List<OSMEntity.Tag> permissionTags = new ArrayList<>(tags.size());
         for (final Tag tag : tags) {
-            if (permissionTagKeys.contains(tag.key)) {
+            if (permissionTagKeys.contains(tag.key.toLowerCase())) {
                 permissionTags.add(tag);
             }
         }
