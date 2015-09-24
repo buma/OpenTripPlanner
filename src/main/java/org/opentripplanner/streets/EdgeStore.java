@@ -83,6 +83,24 @@ public class EdgeStore implements Serializable {
     /** Geometries. One entry for each edge pair */
     protected List<int[]> geometries; // intermediate points along the edge, other than the intersection endpoints
 
+    //Map which OSM transport mode type enables which Edge Flag
+    private static final transient EnumMap<TransportModeType, Flag> transportModeFlag;
+
+    //Map which OSM transport mode type sets which no thru traffic Flag
+    private static final transient EnumMap<TransportModeType, Flag> transportModeNoThruTrafficFlag;
+
+    static {
+        transportModeFlag = new EnumMap<>(TransportModeType.class);
+        transportModeFlag.put(TransportModeType.MOTORCAR, Flag.ALLOWS_CAR);
+        transportModeFlag.put(TransportModeType.FOOT, Flag.ALLOWS_PEDESTRIAN);
+        transportModeFlag.put(TransportModeType.BICYCLE, Flag.ALLOWS_BIKE);
+
+        transportModeNoThruTrafficFlag = new EnumMap<>(TransportModeType.class);
+        transportModeNoThruTrafficFlag.put(TransportModeType.MOTORCAR, Flag.NO_THRU_TRAFFIC_CAR);
+        transportModeNoThruTrafficFlag.put(TransportModeType.FOOT, Flag.NO_THRU_TRAFFIC_PEDESTRIAN);
+        transportModeNoThruTrafficFlag.put(TransportModeType.BICYCLE, Flag.NO_THRU_TRAFFIC_BIKE);
+    }
+
     public EdgeStore (VertexStore vertexStore, int initialSize) {
         this.vertexStore = vertexStore;
         // There is one flags and speeds entry per edge.
@@ -224,23 +242,12 @@ public class EdgeStore implements Serializable {
      */
     private int getPermissionFlags(EnumMap<TransportModeType, OSMAccessPermissions> permissions) {
         int start = 0;
-        //TODO move this to the initialization
-        EnumMap<TransportModeType, Flag> transportModeFlag = new EnumMap<>(TransportModeType.class);
-        transportModeFlag.put(TransportModeType.MOTORCAR, Flag.ALLOWS_CAR);
-        transportModeFlag.put(TransportModeType.FOOT, Flag.ALLOWS_PEDESTRIAN);
-        transportModeFlag.put(TransportModeType.BICYCLE, Flag.ALLOWS_BIKE);
-
-        EnumMap<TransportModeType, Flag> transportModeNoThruTrafficFlag = new EnumMap<>(TransportModeType.class);
-        transportModeNoThruTrafficFlag.put(TransportModeType.MOTORCAR, Flag.NO_THRU_TRAFFIC_CAR);
-        transportModeNoThruTrafficFlag.put(TransportModeType.FOOT, Flag.NO_THRU_TRAFFIC_PEDESTRIAN);
-        transportModeNoThruTrafficFlag.put(TransportModeType.BICYCLE, Flag.NO_THRU_TRAFFIC_BIKE);
-
         for (final Map.Entry<TransportModeType, OSMAccessPermissions> entry : permissions.entrySet()) {
             if (transportModeFlag.containsKey(entry.getKey())) {
                 Flag flag = transportModeFlag.get(entry.getKey());
                 if (!(entry.getValue() == OSMAccessPermissions.NO
                     || entry.getValue() == OSMAccessPermissions.DISMOUNT)) {
-                    start |=flag.flag;
+                    start |= flag.flag;
                 }
                 Flag thru_traffic = transportModeNoThruTrafficFlag.get(entry.getKey());
                 if (entry.getValue() == OSMAccessPermissions.PRIVATE || entry.getValue() == OSMAccessPermissions.DESTINATION) {
