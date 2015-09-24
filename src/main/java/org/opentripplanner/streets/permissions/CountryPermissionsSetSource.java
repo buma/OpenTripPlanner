@@ -56,6 +56,7 @@ public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
         validTags1.put("cycleway", false);
         validTags1.put("footway", false);
         validTags1.put("steps", false);
+        validTags1.put("platform", false);
         validTags = Collections.unmodifiableMap(validTags1);
     }
 
@@ -130,7 +131,7 @@ public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
         prepareProperties("bridleway", bridleway);
         prepareProperties("cycleway", cycleway);
         //TODO: some steps have bicycle and wheelchair ramps
-        prepareProperties("footway|steps", footway);
+        prepareProperties("footway|steps|platform|public_transport=platform|railway=platform", footway);
     }
 
     /**
@@ -182,6 +183,11 @@ public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
         Set<OSMSpecifier> specifiers = new HashSet<>(10);
         if (tagSpecifiers.contains("|")) {
             for (String specifier: tagSpecifiers.split("\\|")) {
+                if (specifier.contains("=")) {
+                    specifiers.add(new OSMSpecifier(specifier));
+                    LOG.info("Adding {} as a permission tag", specifier);
+                    continue;
+                }
                 if (validTags.containsKey(specifier)) {
                     specifiers.add(new OSMSpecifier("highway", specifier));
                     if (validTags.get(specifier)) {
@@ -195,8 +201,11 @@ public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
             if (validTags.containsKey(tagSpecifiers)) {
                 specifiers.add(new OSMSpecifier("highway", tagSpecifiers));
                 if (validTags.get(tagSpecifiers)) {
-                    specifiers.add(new OSMSpecifier("highway", tagSpecifiers+"_link"));
+                    specifiers.add(new OSMSpecifier("highway", tagSpecifiers + "_link"));
                 }
+            } else if (tagSpecifiers.contains("=")) {
+                    specifiers.add(new OSMSpecifier(tagSpecifiers));
+                    LOG.info("Adding {} as a permission tag", tagSpecifiers);
             } else {
                 LOG.warn("Tag \"{}\" is not valid highway tag!", tagSpecifiers);
             }
