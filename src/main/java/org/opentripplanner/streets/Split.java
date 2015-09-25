@@ -31,6 +31,16 @@ public class Split {
     public int vertex0; // the vertex at the beginning of the chosen edge
     public int vertex1; // the vertex at the end of the chosen edge
 
+    @Override public String toString() {
+        return "Split{" +
+            "distance0_mm=" + distance0_mm +
+            ", distance1_mm=" + distance1_mm +
+            ", vertex0=" + vertex0 +
+            ", vertex1=" + vertex1 +
+            ", distSquared=" + distSquared +
+            '}';
+    }
+
     public void setFrom (Split other) {
         edge = other.edge;
         seg = other.seg;

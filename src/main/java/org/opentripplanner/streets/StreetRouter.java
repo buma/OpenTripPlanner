@@ -124,6 +124,14 @@ public class StreetRouter {
             LOG.info("No street was found near the specified origin point of {}, {}.", lat, lon);
             return;
         }
+        setOrigin(split);
+    }
+
+    public void setOrigin(Split split) {
+        if (split == null) {
+            LOG.info("No street was found near the specified origin point.");
+            return;
+        }
         bestStates.clear();
         queue.reset();
         lastState = null;

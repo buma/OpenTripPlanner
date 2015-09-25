@@ -19,9 +19,7 @@ import org.opentripplanner.api.model.error.PlannerError;
 import org.opentripplanner.api.resource.Response;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.standalone.OTPServerWithNetworks;
-import org.opentripplanner.streets.Split;
-import org.opentripplanner.streets.StreetRouter;
-import org.opentripplanner.streets.TransportNetworkPath;
+import org.opentripplanner.streets.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +27,6 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.opentripplanner.api.resource.networks.Routers.Q;
@@ -55,27 +52,9 @@ public class PlannerResource extends TransportNetworkRoutingResource {
             routingRequest = super.buildRequest();
             LOG.info("read request: {}", routingRequest);
 
-            StreetRouter router = new StreetRouter(otpServer.transportNetwork.streetLayer);
-            router.setOrigin(routingRequest.from.lat, routingRequest.from.lng);
-
-            Split split = otpServer.transportNetwork.streetLayer
-                .findSplit(routingRequest.to.lat, routingRequest.to.lng, 300);
-            if (split == null) {
-                Exception e = new Exception("No vertex wasn't found near to coordinate!");
-                PlannerError error = new PlannerError(e);
-                if (!PlannerError.isPlanningError(e.getClass()))
-                    LOG.warn("Error while planning path: ", e);
-                response.setError(error);
-                return response;
-            }
-
-            //TODO: what about vertex1 It could also be a destination?
-            router.toVertex = split.vertex0;
-            router.route();
-
-            List<TransportNetworkPath> paths = new ArrayList<>(1);
-            paths.add(new TransportNetworkPath(router.getLastState(), otpServer.transportNetwork));
-
+            Router router = otpServer.getRouter(routingRequest.routerId);
+            TransportNetworkFinder tnFinder = new TransportNetworkFinder(router);
+            List<TransportNetworkPath> paths = tnFinder.transportNetworkEntryPoint(routingRequest);
             TripPlan plan = TransportNetworkPathToTripPlanConverter
                 .generatePlan(paths, routingRequest);
             response.setPlan(plan);

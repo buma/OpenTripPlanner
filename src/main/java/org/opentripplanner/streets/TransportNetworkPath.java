@@ -26,6 +26,8 @@ public class TransportNetworkPath {
 
     private static final Logger LOG = LoggerFactory.getLogger(TransportNetworkPath.class);
 
+    private final int lastWeight;
+
     public LinkedList<StreetRouter.State> states;
 
     public LinkedList<Integer> edges;
@@ -34,10 +36,14 @@ public class TransportNetworkPath {
 
     //TODO maybe we'll need also optimize parameter or at least a parameter to tell if we route arrive by or depart from
 
-    public TransportNetworkPath(StreetRouter.State s, TransportNetwork transportNetwork) {
+    public TransportNetworkPath(StreetRouter.State s, TransportNetwork transportNetwork, boolean arriveBy) {
         this.transportNetwork = transportNetwork;
+        this.lastWeight = s.weight;
         edges = new LinkedList<>();
         states = new LinkedList<>();
+        StreetRouter.State lastState;
+
+
         /*
          * Starting from latest (time-wise) state, copy states to the head of a list in reverse
          * chronological order. List indices will thus increase forward in time, and backEdges will
@@ -48,6 +54,11 @@ public class TransportNetworkPath {
             if (cur.backEdge != -1 && cur.backState != null) {
                 edges.addFirst(cur.backEdge);
             }
+        }
+        if (arriveBy) {
+            //reverse states & edges somehow
+            //Collections.reverse(states);
+            //Collections.reverse(edges);
         }
     }
 
@@ -61,5 +72,13 @@ public class TransportNetworkPath {
 
     public TransportNetwork getTransportNetwork() {
         return transportNetwork;
+    }
+
+    public long getEndTime() {
+        return 0;
+    }
+
+    public int getlastWeight() {
+        return lastWeight;
     }
 }
