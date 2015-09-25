@@ -240,6 +240,15 @@ public class StreetLayer implements Serializable {
         int forwardFlags = EdgeStore.getPermissionFlags(permissions.first);
         int backwardFlags = EdgeStore.getPermissionFlags(permissions.second);
 
+        if (osmWay.isSteps()) {
+            forwardFlags |= EdgeStore.Flag.STAIRS.flag;
+            backwardFlags |= EdgeStore.Flag.STAIRS.flag;
+        }
+        if (!osmWay.hasTag("name") && !osmWay.hasTag("ref")) {
+            forwardFlags |= EdgeStore.Flag.BOGUS_NAME.flag;
+            backwardFlags |= EdgeStore.Flag.BOGUS_NAME.flag;
+        }
+
         // Create and store the forward and backward edge
         EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex,
             edgeLengthMillimeters, osmID, name, streetMaxSpeedForward, streetMaxSpeedBackward, forwardFlags, backwardFlags);

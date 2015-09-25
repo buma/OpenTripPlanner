@@ -524,7 +524,7 @@ public class EdgeStore implements Serializable {
         }
 
         public boolean hasBogusName() {
-            return getName().equals(EMPTY_NAME);
+            return getFlag(Flag.BOGUS_NAME) || getName().equals(EMPTY_NAME);
         }
 
         public StreetTraversalPermission getPermissions() {
