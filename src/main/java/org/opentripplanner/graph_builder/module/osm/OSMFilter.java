@@ -45,7 +45,7 @@ public class OSMFilter {
         if (!isOsmEntityRoutable(way))
             return false;
 
-        if (way.isUnderConstruction()) {
+        if (way.isUnderConstruction() || !way.isCurrent()) {
             return false;
         }
 

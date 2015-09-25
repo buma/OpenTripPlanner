@@ -78,6 +78,15 @@ public interface IOSMWithTags {
     }
 
     /**
+     * @return true if highway doesn't have abandoned, removed or proposed tags
+     */
+    default boolean isCurrent() {
+        String highway = getTag("highway");
+        return !("abandoned".equals(highway) || "proposed".equals(highway) ||
+            "propossed".equals(highway) || hasTag("proposed") || "removed".equals(highway));
+    }
+
+    /**
      * Returns true if this tag is explicitly access to this entity.
      *
      * @param tagName
