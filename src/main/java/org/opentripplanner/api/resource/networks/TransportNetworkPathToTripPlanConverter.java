@@ -298,7 +298,7 @@ public class TransportNetworkPathToTripPlanConverter {
             leg.distance += edge.getLengthM();
             edges[i] = edge;
             //LOG.info("Edge: {} (F:{}), geo:{}", edge, edge.isForward(), geometry);
-            LOG.info("Edge: {}, {}", edge.getOSMID(), edge.getName());
+            LOG.info("Edge: {}, {}", edge.getOSMID(), edge.getName(Locale.ENGLISH));
         }
 
         //add mode and alerts

@@ -38,6 +38,7 @@ import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Locale;
 
 import static org.opentripplanner.api.resource.networks.Routers.Q;
 import static org.opentripplanner.streets.VertexStore.floatingDegreesToFixed;
@@ -166,7 +167,7 @@ import static javax.measure.unit.NonSI.KILOMETERS_PER_HOUR;
                         gen.writeObjectFieldStart("properties");
                         if (detail) {
                             gen.writeNumberField("osm_id", cursor.getOSMID());
-                            gen.writeStringField("name", cursor.getName());
+                            gen.writeStringField("name", cursor.getName(Locale.ENGLISH));
                             double speedMs = cursor.getSpeed() / VertexStore.FIXED_FACTOR;
                             Color color = palette
                                 .getColor(Math.round(unitConverter.convert(speedMs)));
@@ -259,7 +260,7 @@ import static javax.measure.unit.NonSI.KILOMETERS_PER_HOUR;
                         gen.writeObjectFieldStart("properties");
                         if (detail) {
                             gen.writeNumberField("osm_id", cursor.getOSMID());
-                            gen.writeStringField("name", cursor.getName());
+                            gen.writeStringField("name", cursor.getName(Locale.ENGLISH));
                             StreetTraversalPermission streetPermission = cursor.getPermissions();
                             String label = getPermissionLabel(streetPermission);
                             Color color = getPermissionColor(streetPermission);

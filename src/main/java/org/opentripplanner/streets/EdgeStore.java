@@ -18,6 +18,8 @@ import org.opentripplanner.streets.permissions.TransportModeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -149,7 +151,6 @@ public class EdgeStore implements Serializable {
 
         //We remove all names for edges that were completely removed (osmId isn't used anymore)
         osmids_names.retainEntries((osmId, name) -> used_osmids.contains(osmId));
-        osmids_names.trimToSize();
 
 
         long noNameCount = osmids_names.valueCollection().parallelStream().filter(
@@ -204,11 +205,10 @@ public class EdgeStore implements Serializable {
         geometries.add(EMPTY_INT_ARRAY);
         osmids.add(osmID);
 
-        if (name == null) {
-            name = EMPTY_NAME;
+        if (name != null) {
+            name = name.intern();
+            osmids_names.put(osmID, name);
         }
-        name = name.intern();
-        osmids_names.put(osmID, name);
 
         // Forward edge
         speeds.add(streetMaxSpeedForward);
@@ -515,16 +515,23 @@ public class EdgeStore implements Serializable {
             return osmids.get(pairIndex);
         }
 
+        @Nullable
         public String getName() {
             return osmids_names.get(getOSMID());
         }
 
+        @Nonnull
         public String getName(Locale requestedLocale) {
-            return getName();
+            String name = getName();
+            if (name == null) {
+                return EMPTY_NAME;
+            } else {
+                return name;
+            }
         }
 
         public boolean hasBogusName() {
-            return getFlag(Flag.BOGUS_NAME) || getName().equals(EMPTY_NAME);
+            return getFlag(Flag.BOGUS_NAME) || getName() == null;
         }
 
         public StreetTraversalPermission getPermissions() {
