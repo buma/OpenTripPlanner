@@ -57,6 +57,7 @@ public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
         validTags1.put("footway", false);
         validTags1.put("steps", false);
         validTags1.put("platform", false);
+        validTags1.put("corridor", false); //Apparently indoor hallway
         validTags = Collections.unmodifiableMap(validTags1);
     }
 
@@ -131,7 +132,7 @@ public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
         prepareProperties("bridleway", bridleway);
         prepareProperties("cycleway", cycleway);
         //TODO: some steps have bicycle and wheelchair ramps
-        prepareProperties("footway|steps|platform|public_transport=platform|railway=platform", footway);
+        prepareProperties("footway|steps|platform|public_transport=platform|railway=platform|corridor", footway);
     }
 
     /**
