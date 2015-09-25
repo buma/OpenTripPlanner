@@ -12,7 +12,6 @@ import gnu.trove.map.hash.TLongObjectHashMap;
 import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TLongHashSet;
 import org.opentripplanner.common.geometry.GeometryUtils;
-import org.opentripplanner.common.model.P2;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.streets.permissions.OSMAccessPermissions;
 import org.opentripplanner.streets.permissions.TransportModeType;
@@ -196,7 +195,7 @@ public class EdgeStore implements Serializable {
      */
     public Edge addStreetPair(int beginVertexIndex, int endVertexIndex, int edgeLengthMillimeters,
         long osmID, String name, int streetMaxSpeedForward, int streetMaxSpeedBackward,
-        P2<EnumMap<TransportModeType, OSMAccessPermissions>> permissions) {
+        int flagsForward, int flagsBackward) {
 
         // Store only one length, set of endpoints, and intermediate geometry per pair of edges.
         lengths_mm.add(edgeLengthMillimeters);
@@ -213,19 +212,11 @@ public class EdgeStore implements Serializable {
 
         // Forward edge
         speeds.add(streetMaxSpeedForward);
-        if (permissions != null) {
-            flags.add(getPermissionFlags(permissions.first));
-        } else {
-            flags.add(0);
-        }
+        flags.add(flagsForward);
 
         // Backward edge
         speeds.add(streetMaxSpeedBackward);
-        if (permissions != null) {
-            flags.add(getPermissionFlags(permissions.second));
-        } else {
-            flags.add(0);
-        }
+        flags.add(flagsBackward);
 
         // Increment total number of edges created so far, and return the index of the first new edge.
         int forwardEdgeIndex = nEdges;
@@ -240,7 +231,7 @@ public class EdgeStore implements Serializable {
      * @param permissions
      * @return integer which represents set flags
      */
-    private int getPermissionFlags(EnumMap<TransportModeType, OSMAccessPermissions> permissions) {
+    public static int getPermissionFlags(EnumMap<TransportModeType, OSMAccessPermissions> permissions) {
         int start = 0;
         for (final Map.Entry<TransportModeType, OSMAccessPermissions> entry : permissions.entrySet()) {
             if (transportModeFlag.containsKey(entry.getKey())) {

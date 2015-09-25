@@ -237,9 +237,12 @@ public class StreetLayer implements Serializable {
 
         String name = osmWay.getTag("name");
 
+        int forwardFlags = EdgeStore.getPermissionFlags(permissions.first);
+        int backwardFlags = EdgeStore.getPermissionFlags(permissions.second);
+
         // Create and store the forward and backward edge
         EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex,
-            edgeLengthMillimeters, osmID, name, streetMaxSpeedForward, streetMaxSpeedBackward, permissions);
+            edgeLengthMillimeters, osmID, name, streetMaxSpeedForward, streetMaxSpeedBackward, forwardFlags, backwardFlags);
         newForwardEdge.setGeometry(nodes);
         pointsPerEdgeHistogram.add(nNodes);
 
@@ -373,12 +376,8 @@ public class StreetLayer implements Serializable {
         // Make a second, new bidirectional edge pair after the split and add it to the spatial index.
         // New edges will be added to edge lists later (the edge list is a transient index).
         EdgeStore.Edge newEdge = edgeStore.addStreetPair(newVertexIndex, oldToVertex, split.distance1_mm,
-            edge.getOSMID(), edge.getName(), forwardSpeed, backwardSpeed, null);
+            edge.getOSMID(), edge.getName(), forwardSpeed, backwardSpeed, forwardFlags, backwardFlags);
         spatialIndex.insert(newEdge.getEnvelope(), newEdge.edgeIndex);
-        //Copies correct flags to new forward and backward edge
-        newEdge.setFlags(forwardFlags);
-        newEdge.advance();
-        newEdge.setFlags(backwardFlags);
         return newVertexIndex;
 
         // TODO store street-to-stop distance in a table in TransitLayer. This also allows adjusting for subway entrances etc.
