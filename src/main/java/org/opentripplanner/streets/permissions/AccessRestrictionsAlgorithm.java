@@ -75,7 +75,6 @@ public class AccessRestrictionsAlgorithm {
         reset();
 
         WayProperties wayData = wayPropertySet.getDataForWay(way);
-        LOG.info("Tags:{}", way.getTags());
         EnumMap<TransportModeType, OSMAccessPermissions> nonInheritedPermissions;
         if (wayData == null) {
             LOG.warn("No waydata for road:{}", way.getTags());
@@ -86,14 +85,15 @@ public class AccessRestrictionsAlgorithm {
         } else {
             nonInheritedPermissions = wayData.getModePermissions().getNonInheritedPermissions();
         }
+        //LOG.info("Tags:{}", way.getTags());
         //Gets specific access for highway of way based on provided wayPropertySetSource
-        LOG.info("wayData: {}", wayData.getModePermissions());
+        //LOG.info("wayData: {}", wayData.getModePermissions());
 
         TransportModeTreeItem tree = transportModeHierarchy;
 
         //we label access as Unknown which is default
         TransportModeTreeItem root = (TransportModeTreeItem) tree.getRoot();
-        LOG.info("ROOT: {}", root);
+        //LOG.info("ROOT: {}", root);
         root.setPermission(OSMAccessPermissions.UNKNOWN);
 
         EnumMap<TransportModeType, TransportModeTreeItem> usefulTransportModes = new EnumMap<>(
@@ -107,7 +107,7 @@ public class AccessRestrictionsAlgorithm {
             if (defaultHighwayTypePermission != OSMAccessPermissions.UNKNOWN) {
                 currentLeaf.setPermission(defaultHighwayTypePermission);
             }
-            LOG.info("Depth: {} info:{}", currentLeaf.getDepth(), currentLeaf);
+            //LOG.info("Depth: {} info:{}", currentLeaf.getDepth(), currentLeaf);
             if (currentTransportMode == TransportModeType.FOOT
                 || currentTransportMode == TransportModeType.BICYCLE
                 || currentTransportMode == TransportModeType.MOTORCAR) {
@@ -120,7 +120,7 @@ public class AccessRestrictionsAlgorithm {
         Collection<OSMEntity.Tag> permissionTags = way.getPermissionTags();
         EnumMap<TransportModeType, OSMAccessPermissions> specificPermissions = new EnumMap<TransportModeType, OSMAccessPermissions>(TransportModeType.class);
         for (final OSMEntity.Tag tag : permissionTags) {
-            LOG.info("TAG:{}", tag);
+            //LOG.info("TAG:{}", tag);
             TransportModeType transportModeType = TransportModeType.valueOf(
                 tag.key.toUpperCase(Locale.ENGLISH));
             if (transportModeType == TransportModeType.BICYCLE && tag.value.toLowerCase().equals("use_sidepath")) {
@@ -131,7 +131,7 @@ public class AccessRestrictionsAlgorithm {
                 OSMAccessPermissions osmAccessPermissions = OSMAccessPermissions.toPermission(
                     tag.value.toLowerCase(Locale.ENGLISH));
                 specificPermissions.put(transportModeType, osmAccessPermissions);
-                LOG.info("Added {} -> {}", transportModeType, osmAccessPermissions);
+                //LOG.info("Added {} -> {}", transportModeType, osmAccessPermissions);
             } catch (IllegalArgumentException ial) {
                 LOG.warn("\"{}\" is not valid OSM access permission for {}", tag.value, tag.key);
             }
@@ -146,7 +146,7 @@ public class AccessRestrictionsAlgorithm {
             if (defaultHighwayTypePermission != OSMAccessPermissions.UNKNOWN) {
                 currentLeaf.setPermission(defaultHighwayTypePermission);
             }
-            LOG.info("Depth: {} info:{}", currentLeaf.getDepth(), currentLeaf);
+            //LOG.info("Depth: {} info:{}", currentLeaf.getDepth(), currentLeaf);
         }
 
         EnumMap<TransportModeType, OSMAccessPermissions> permissionsMap = new EnumMap<>(
@@ -156,7 +156,7 @@ public class AccessRestrictionsAlgorithm {
         //We actually loose some information since we get information if mode is designated yes or dismount
         for (Map.Entry<TransportModeType, TransportModeTreeItem> map: usefulTransportModes.entrySet()) {
             OSMAccessPermissions permissions = map.getValue().getFullPermission();
-            LOG.info("MODE:{} permission:{}", map.getKey(), permissions);
+            //LOG.info("MODE:{} permission:{}", map.getKey(), permissions);
             permissionsMap.put(map.getKey(), permissions);
         }
 
