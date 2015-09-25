@@ -249,6 +249,24 @@ public class StreetLayer implements Serializable {
             backwardFlags |= EdgeStore.Flag.BOGUS_NAME.flag;
         }
 
+        //Wheelchairs are by default allowed if pedestrian are
+        boolean wheelchairForward = (forwardFlags & EdgeStore.Flag.ALLOWS_PEDESTRIAN.flag) != 0;
+        boolean wheelchairBackward = (backwardFlags & EdgeStore.Flag.ALLOWS_PEDESTRIAN.flag) != 0;
+        //TODO: what about wheelchair limited?
+        //Wheelchairs aren't allowed if they are specifically forbidden or aren't explicitly allowed on stairs
+        if (osmWay.isTagFalse("wheelchair")
+            || (osmWay.isSteps() && !osmWay.isTagTrue("wheelchair")))
+        {
+            wheelchairBackward = false;
+            wheelchairForward = false;
+        }
+        if (wheelchairForward) {
+            forwardFlags |= EdgeStore.Flag.ALLOWS_WHEELCHAIR.flag;
+        }
+        if (wheelchairBackward) {
+            backwardFlags |= EdgeStore.Flag.ALLOWS_WHEELCHAIR.flag;
+        }
+
         // Create and store the forward and backward edge
         EdgeStore.Edge newForwardEdge = edgeStore.addStreetPair(beginVertexIndex, endVertexIndex,
             edgeLengthMillimeters, osmID, name, streetMaxSpeedForward, streetMaxSpeedBackward, forwardFlags, backwardFlags);
