@@ -14,6 +14,7 @@
 package org.opentripplanner.standalone;
 
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.opentripplanner.routing.error.GraphNotFoundException;
 import org.opentripplanner.transit.TransportNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +46,13 @@ public class OTPServerWithNetworks {
         return Arrays.asList("default");
     }
 
-    /*public Router getRouter(String routerId) throws GraphNotFoundException {
-        //return graphService.getRouter(routerId);
-    }*/
+    public org.opentripplanner.streets.Router getRouter(String routerId)  {
+        if (transportNetwork == null) {
+            throw new GraphNotFoundException();
+        } else {
+            return new org.opentripplanner.streets.Router("default", transportNetwork);
+        }
+    }
 
     /**
      * Return an HK2 Binder that injects this specific OTPServer instance into Jersey web resources.
