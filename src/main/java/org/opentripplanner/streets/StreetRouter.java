@@ -201,6 +201,9 @@ public class StreetRouter {
                 VertexStore.Vertex vertex = streetLayer.vertexStore.getCursor(v0);
                 printStream.printf("%f,%f,%d\n", vertex.getLat(), vertex.getLon(), s0.weight);
             }
+            //if arriveBy == true
+            //TIntList edgeList = streetLayer.incomingEdges.get(v0);
+            //else
             TIntList edgeList = streetLayer.outgoingEdges.get(v0);
             edgeList.forEach(edgeIndex -> {
                 edge.seek(edgeIndex);
@@ -250,6 +253,60 @@ public class StreetRouter {
             this.vertex = atVertex;
             this.backEdge = viaEdge;
             this.backState = backState;
+        }
+
+        public int getWeightDelta() {
+            return this.weight - backState.weight;
+        }
+
+        protected State clone() {
+            State ret;
+            try {
+                ret = (State) super.clone();
+            } catch (CloneNotSupportedException e) {
+                throw new IllegalStateException("This is not happening");
+            }
+            return ret;
+        }
+
+        /**
+         * Reverses order of states in arriveBy=true searches. Because start and target are reversed there
+         * @param transportNetwork this is used for getting from/to vertex in backEdge
+         * @return last edge in reversed order
+         */
+        public State reverse(TransportNetwork transportNetwork) {
+            State orig = this;
+            State ret = orig.reversedClone();
+            int edge = -1;
+            while (orig.backState != null) {
+                edge = orig.backEdge;
+                State child = ret.clone();
+                child.backState = ret;
+                child.backEdge = edge;
+                EdgeStore.Edge origBackEdge = orig.getBackEdge(transportNetwork);
+                if (ret.vertex == origBackEdge.getFromVertex()) {
+                    child.vertex = origBackEdge.getToVertex();
+                    //    traversingBackward = false;
+                }else if (ret.vertex == origBackEdge.getToVertex()) {
+                    //traversingBackward = true
+                    child.vertex = origBackEdge.getFromVertex();
+                }
+                child.weight += orig.getWeightDelta();
+                ret = child;
+                orig = orig.backState;
+            }
+            return ret;
+        }
+
+        public State reversedClone() {
+            State newState = new State(this.vertex, -1, null);
+            return newState;
+        }
+
+        /** Returns time in seconds since epoch */
+        public long getTimeSeconds() {
+            //time
+            return 1000 / 1000;
         }
 
         //TODO: actual time
