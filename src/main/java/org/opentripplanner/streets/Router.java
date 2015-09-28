@@ -34,14 +34,14 @@ public class Router {
     public double[] timeouts = {5, 2, 1, 0.5, 0.1};
 
     // A RoutingRequest containing default parameters that will be cloned when handling each request
-    public RoutingRequest defaultRoutingRequest;
+    public TransportNetworkRequest defaultRoutingRequest;
 
     public Router(String id, TransportNetwork transportNetwork) {
         this.transportNetwork = transportNetwork;
         this.id = id;
 
         //FIXME: temporary since startup isn't yet called
-        this.defaultRoutingRequest = new RoutingRequest();
+        this.defaultRoutingRequest = new TransportNetworkRequest();
     }
 
     /**
@@ -53,11 +53,11 @@ public class Router {
         JsonNode routingDefaultsNode = config.get("routingDefaults");
         if (routingDefaultsNode != null) {
             LOG.info("Loading default routing parameters from JSON:");
-            ReflectiveInitializer<RoutingRequest> scraper = new ReflectiveInitializer(RoutingRequest.class);
+            ReflectiveInitializer<TransportNetworkRequest> scraper = new ReflectiveInitializer(TransportNetworkRequest.class);
             this.defaultRoutingRequest = scraper.scrape(routingDefaultsNode);
         } else {
             LOG.info("No default routing parameters were found in the router config JSON. Using built-in OTP defaults.");
-            this.defaultRoutingRequest = new RoutingRequest();
+            this.defaultRoutingRequest = new TransportNetworkRequest();
         }
 
         /* Apply single timeout. */

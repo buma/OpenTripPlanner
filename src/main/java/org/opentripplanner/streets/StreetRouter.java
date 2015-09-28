@@ -8,7 +8,6 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
-import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.transit.TransportNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +55,8 @@ public class StreetRouter {
 
     //Last state when target vertex was found
     private State lastState = null;
+
+    private final TransportNetworkRequest transportNetworkRequest;
 
     /**
      * @return a map from transit stop indexes to their distances from the origin.
@@ -110,14 +111,37 @@ public class StreetRouter {
         return result.toArray();
     }
 
+    @Deprecated
     public StreetRouter (StreetLayer streetLayer) {
         this.streetLayer = streetLayer;
+        this.transportNetworkRequest = new TransportNetworkRequest();
+    }
+
+    public StreetRouter(TransportNetworkRequest options) {
+        this.streetLayer = options.getTransportContext().transportNetwork.streetLayer;
+        this.transportNetworkRequest = options;
+    }
+
+    public void setOrigin(Split split, TransportNetworkRequest options) {
+        bestStates.clear();
+        queue.reset();
+        lastState = null;
+        State startState0 = new State(split.vertex0, -1, options.getSecondsSinceEpoch(), options);
+        State startState1 = new State(split.vertex1, -1, options.getSecondsSinceEpoch(), options);
+        // TODO walk speed, assuming 1 m/sec currently.
+        startState0.weight = split.distance0_mm / 1000;
+        startState1.weight = split.distance1_mm / 1000;
+        bestStates.put(split.vertex0, startState0);
+        bestStates.put(split.vertex1, startState1);
+        queue.insert(startState0, startState0.weight);
+        queue.insert(startState1, startState1.weight);
     }
 
     /**
      * @param lat Latitude in floating point (not fixed int) degrees.
      * @param lon Longitude in flating point (not fixed int) degrees.
      */
+    @Deprecated
     public void setOrigin (double lat, double lon) {
         Split split = streetLayer.findSplit(lat, lon, 300);
         if (split == null) {
@@ -127,6 +151,7 @@ public class StreetRouter {
         setOrigin(split);
     }
 
+    @Deprecated
     public void setOrigin(Split split) {
         if (split == null) {
             LOG.info("No street was found near the specified origin point.");
@@ -135,8 +160,8 @@ public class StreetRouter {
         bestStates.clear();
         queue.reset();
         lastState = null;
-        State startState0 = new State(split.vertex0, -1, null);
-        State startState1 = new State(split.vertex1, -1, null);
+        State startState0 = new State(split.vertex0, -1);
+        State startState1 = new State(split.vertex1, -1);
         // TODO walk speed, assuming 1 m/sec currently.
         startState0.weight = split.distance0_mm / 1000;
         startState1.weight = split.distance1_mm / 1000;
@@ -150,7 +175,7 @@ public class StreetRouter {
         bestStates.clear();
         queue.reset();
         lastState = null;
-        State startState = new State(fromVertex, -1, null);
+        State startState = new State(fromVertex, -1);
         bestStates.put(fromVertex, startState);
         queue.insert(startState, 0);
     }
@@ -202,9 +227,12 @@ public class StreetRouter {
                 printStream.printf("%f,%f,%d\n", vertex.getLat(), vertex.getLon(), s0.weight);
             }
             //if arriveBy == true
-            //TIntList edgeList = streetLayer.incomingEdges.get(v0);
-            //else
-            TIntList edgeList = streetLayer.outgoingEdges.get(v0);
+            TIntList edgeList = null;
+            if (transportNetworkRequest.arriveBy) {
+                edgeList = streetLayer.incomingEdges.get(v0);
+            } else {
+                edgeList = streetLayer.outgoingEdges.get(v0);
+            }
             edgeList.forEach(edgeIndex -> {
                 edge.seek(edgeIndex);
                 State s1 = edge.traverse(s0);
@@ -247,12 +275,37 @@ public class StreetRouter {
         public int vertex;
         public int weight;
         public int backEdge;
+
+        // the current time at this state, in milliseconds UNIX time
+        protected long time;
+
+        // date time when this search was started in milliseconds UNIX time
+        protected long startTime;
+
+        protected TransportNetworkRequest options;
         public State backState; // previous state in the path chain
         public State nextState; // next state at the same location (for turn restrictions and other cases with co-dominant states)
-        public State (int atVertex, int viaEdge, State backState) {
+
+
+        public State(int atVertex, int viaEdge) {
             this.vertex = atVertex;
             this.backEdge = viaEdge;
-            this.backState = backState;
+            this.backState = null;
+        }
+
+        public State(int atVertex, int viaEdge, long timeSeconds,
+            TransportNetworkRequest options) {
+            this(atVertex, viaEdge, timeSeconds, timeSeconds, options);
+        }
+
+        public State(int origin, int viaEdge, long timeSeconds, long startTime,
+            TransportNetworkRequest options) {
+            this.weight = 0;
+            this.vertex = origin;
+            this.backEdge = viaEdge;
+            this.time = timeSeconds * 1000;
+            this.startTime = startTime;
+            this.options = options;
         }
 
         public int getWeightDelta() {
@@ -299,7 +352,7 @@ public class StreetRouter {
         }
 
         public State reversedClone() {
-            State newState = new State(this.vertex, -1, null);
+            State newState = new State(this.vertex, -1);
             return newState;
         }
 
@@ -325,6 +378,10 @@ public class StreetRouter {
 
         public EdgeStore.Edge getBackEdge(TransportNetwork transportNetwork) {
             return transportNetwork.streetLayer.edgeStore.getCursor(backEdge);
+        }
+
+        public TransportNetworkRequest getOptions() {
+            return options;
         }
     }
 

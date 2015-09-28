@@ -47,7 +47,7 @@ public class PlannerResource extends TransportNetworkRoutingResource {
         Response response = new Response(uriInfo);
         LOG.info("FROM:{} TO:{}, router:{}", fromPlace, toPlace, routerId);
 
-        RoutingRequest routingRequest = null;
+        TransportNetworkRequest routingRequest = null;
         try {
             routingRequest = super.buildRequest();
             LOG.info("read request: {}", routingRequest);

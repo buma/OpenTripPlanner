@@ -355,10 +355,15 @@ public class EdgeStore implements Serializable {
         }
 
         public StreetRouter.State traverse (StreetRouter.State s0) {
-            //if arriveBy == true
-            //StreetRouter.State s1 = new StreetRouter.State(getFromVertex(), edgeIndex, s0);
-            //else
-            StreetRouter.State s1 = new StreetRouter.State(getToVertex(), edgeIndex, s0);
+            final TransportNetworkRequest options = s0.getOptions();
+            StreetRouter.State s1 = s0.clone();
+            if (options.arriveBy) {
+                s1.vertex = getFromVertex();
+            } else {
+                s1.vertex = getToVertex();
+            }
+            s1.backEdge = edgeIndex;
+            s1.backState = s0;
             s1.nextState = null;
             s1.weight = s0.weight + getLengthMm() / 1000;
             return s1;

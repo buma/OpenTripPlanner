@@ -38,14 +38,14 @@ public class TransportNetworkFinder {
         this.router = router;
     }
 
-    public List<TransportNetworkPath> transportNetworkEntryPoint(RoutingRequest request) {
+    public List<TransportNetworkPath> transportNetworkEntryPoint(TransportNetworkRequest request) {
         List<TransportNetworkPath> paths = null;
         try {
             paths = getGraphPathsConsideringIntermediates(request);
             if (paths == null && request.wheelchairAccessible) {
                 // There are no paths that meet the user's slope restrictions.
                 // Try again without slope restrictions, and warn the user in the response.
-                RoutingRequest relaxedRequest = request.clone();
+                TransportNetworkRequest relaxedRequest = request.clone();
                 relaxedRequest.maxSlope = Double.MAX_VALUE;
   //              request.rctx.slopeRestrictionRemoved = true;
                 paths = getGraphPathsConsideringIntermediates(relaxedRequest);
@@ -64,7 +64,7 @@ public class TransportNetworkFinder {
         return paths;
     }
 
-    private List<TransportNetworkPath> getGraphPathsConsideringIntermediates(RoutingRequest request) {
+    private List<TransportNetworkPath> getGraphPathsConsideringIntermediates(TransportNetworkRequest request) {
         if (request.hasIntermediatePlaces()) {
             LOG.error("INTERMEDIATES DOESN'T WORK!!");
             long time = request.dateTime;
@@ -104,7 +104,7 @@ public class TransportNetworkFinder {
         return null;
     }
 
-    private List<TransportNetworkPath> getPaths(RoutingRequest options) {
+    private List<TransportNetworkPath> getPaths(TransportNetworkRequest options) {
         if (options == null) {
             LOG.error("PathService was passed a null routing request.");
             return null;
@@ -116,6 +116,7 @@ public class TransportNetworkFinder {
             ctx = new TransportNetworkContext(options, router.transportNetwork);
             ctx.check();
         }
+        options.setTransportContext(ctx);
         // without transit, we'd just just return multiple copies of the same on-street itinerary
         if (!options.modes.isTransit()) {
             options.numItineraries = 1;
@@ -130,13 +131,13 @@ public class TransportNetworkFinder {
         long searchBeginTime = System.currentTimeMillis();
         LOG.debug("BEGIN SEARCH");
         List<TransportNetworkPath> paths = Lists.newArrayList();
-        StreetRouter streetRouter = new StreetRouter(router.transportNetwork.streetLayer);
-        streetRouter.setOrigin(ctx.origin);
+        StreetRouter streetRouter = new StreetRouter(options);
+        streetRouter.setOrigin(ctx.origin, options);
         streetRouter.toVertex = ctx.target.vertex0;
         streetRouter.route();
         TransportNetworkPath first = new TransportNetworkPath(streetRouter.getLastState(), router.transportNetwork, options.arriveBy);
         //paths.add(first);
-        streetRouter.setOrigin(ctx.origin);
+        //streetRouter.setOrigin(ctx.origin, options);
         streetRouter.toVertex = ctx.target.vertex1;
         streetRouter.route();
         TransportNetworkPath second = new TransportNetworkPath(streetRouter.getLastState(), router.transportNetwork, options.arriveBy);

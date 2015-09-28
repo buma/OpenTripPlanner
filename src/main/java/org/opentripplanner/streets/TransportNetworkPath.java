@@ -34,6 +34,8 @@ public class TransportNetworkPath {
 
     private TransportNetwork transportNetwork;
 
+    private StreetRouter.State lastState;
+
     //TODO maybe we'll need also optimize parameter or at least a parameter to tell if we route arrive by or depart from
 
     public TransportNetworkPath(StreetRouter.State s, TransportNetwork transportNetwork, boolean arriveBy) {
@@ -41,7 +43,11 @@ public class TransportNetworkPath {
         this.lastWeight = s.weight;
         edges = new LinkedList<>();
         states = new LinkedList<>();
-        StreetRouter.State lastState;
+        this.lastState = s;
+
+        if (arriveBy) {
+            this.lastState = s.reverse(transportNetwork);
+        }
 
 
         /*
@@ -49,16 +55,11 @@ public class TransportNetworkPath {
          * chronological order. List indices will thus increase forward in time, and backEdges will
          * be chronologically 'back' relative to their state.
          */
-        for (StreetRouter.State cur = s; cur != null; cur = cur.backState) {
+        for (StreetRouter.State cur = lastState; cur != null; cur = cur.backState) {
             states.addFirst(cur);
             if (cur.backEdge != -1 && cur.backState != null) {
                 edges.addFirst(cur.backEdge);
             }
-        }
-        if (arriveBy) {
-            //reverse states & edges somehow
-            //Collections.reverse(states);
-            //Collections.reverse(edges);
         }
     }
 

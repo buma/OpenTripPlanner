@@ -19,6 +19,7 @@ import org.opentripplanner.routing.core.OptimizeType;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.request.BannedStopSet;
 import org.opentripplanner.standalone.OTPServerWithNetworks;
+import org.opentripplanner.streets.TransportNetworkRequest;
 import org.opentripplanner.util.ResourceBundleSingleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -363,9 +364,9 @@ public class TransportNetworkRoutingResource {
      *
      * @throws ParameterException when there is a problem interpreting a query parameter
      */
-    protected RoutingRequest buildRequest() throws ParameterException {
+    protected TransportNetworkRequest buildRequest() throws ParameterException {
         org.opentripplanner.streets.Router router = otpServer.getRouter(routerId);
-        RoutingRequest request = router.defaultRoutingRequest.clone();
+        TransportNetworkRequest request = router.defaultRoutingRequest.clone();
         request.routerId = routerId;
         // The routing request should already contain defaults, which are set when it is initialized or in the JSON
         // router configuration and cloned. We check whether each parameter was supplied before overwriting the default.
