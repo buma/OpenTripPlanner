@@ -36,6 +36,7 @@ import org.opentripplanner.util.PolylineEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZonedDateTime;
 import java.util.*;
 
 /**
@@ -366,8 +367,7 @@ public class TransportNetworkPathToTripPlanConverter {
     private static Calendar makeCalendar(StreetRouter.State state,
         TransportNetwork transportNetwork) {
         TimeZone timeZone = transportNetwork.getTimeZone();
-        Calendar calendar = Calendar.getInstance(timeZone);
-        calendar.setTimeInMillis(state.getTimeInMillis());
+        Calendar calendar = GregorianCalendar.from(ZonedDateTime.ofInstant(state.getTime(), timeZone.toZoneId()));
         return calendar;
     }
 

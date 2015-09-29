@@ -3,8 +3,18 @@ package org.opentripplanner.streets;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.transit.TransportNetwork;
+import org.opentripplanner.util.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.TimeZone;
 
 /**
  * Created by mabu on 28.9.2015.
@@ -19,6 +29,8 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
      * This is true when searching on street network between stops, to speed up actual searches
      * and when pruning street graph **/
     private boolean timeIndependantSearch = false;
+
+    private ZonedDateTime zonedDateTime;
 
     /**
      * Constructor for options; modes defaults to walk and transit
@@ -76,5 +88,34 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
 
     public void setTimeIndependantSearch(boolean timeIndependantSearch) {
         this.timeIndependantSearch = timeIndependantSearch;
+    }
+
+    @Override
+    public void setDateTime(String date, String time, TimeZone tz) {
+        Date dateObject = DateUtils.toDate(date, time, tz);
+        if (dateObject == null) {
+            throw new RuntimeException("Date time format is invalid!");
+        }
+        GregorianCalendar calendar = new GregorianCalendar(tz);
+        calendar.setTime(dateObject);
+        zonedDateTime = calendar.toZonedDateTime();
+        LOG.info("DateTime:{}", zonedDateTime);
+        super.setDateTime(dateObject);
+    }
+
+    public void setDateTime(Date date, TimeZone tz) {
+        GregorianCalendar calendar = new GregorianCalendar(tz);
+        calendar.setTime(date);
+        zonedDateTime = calendar.toZonedDateTime();
+        LOG.info("DateTime:{}", zonedDateTime);
+        super.setDateTime(date);
+    }
+
+    public Instant getInstant() {
+        return zonedDateTime.toInstant();
+    }
+
+    public ZonedDateTime getZonedDateTime() {
+        return zonedDateTime;
     }
 }

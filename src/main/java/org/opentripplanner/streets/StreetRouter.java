@@ -18,6 +18,9 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -126,8 +129,8 @@ public class StreetRouter {
         bestStates.clear();
         queue.reset();
         lastState = null;
-        State startState0 = new State(split.vertex0, -1, options.getSecondsSinceEpoch(), options);
-        State startState1 = new State(split.vertex1, -1, options.getSecondsSinceEpoch(), options);
+        State startState0 = new State(split.vertex0, -1, options.getZonedDateTime(), options);
+        State startState1 = new State(split.vertex1, -1, options.getZonedDateTime(), options);
         // TODO walk speed, assuming 1 m/sec currently.
         startState0.weight = split.distance0_mm / 1000;
         startState1.weight = split.distance1_mm / 1000;
@@ -156,7 +159,7 @@ public class StreetRouter {
         bestStates.clear();
         queue.reset();
         lastState = null;
-        State startState = new State(fromVertex, -1, transportNetworkRequest.getSecondsSinceEpoch(), transportNetworkRequest);
+        State startState = new State(fromVertex, -1, transportNetworkRequest.getZonedDateTime(), transportNetworkRequest);
         bestStates.put(fromVertex, startState);
         queue.insert(startState, 0);
     }
@@ -258,10 +261,10 @@ public class StreetRouter {
         public int backEdge;
 
         // the current time at this state, in milliseconds UNIX time
-        protected long time;
+        protected Instant time;
 
         // date time when this search was started in seconds UNIX time
-        protected long startTime;
+        protected ZonedDateTime startTime;
 
         protected TransportNetworkRequest options;
         public State backState; // previous state in the path chain
@@ -274,17 +277,17 @@ public class StreetRouter {
             this.backState = null;
         }
 
-        public State(int atVertex, int viaEdge, long timeSeconds,
+        public State(int atVertex, int viaEdge, ZonedDateTime startTime,
             TransportNetworkRequest options) {
-            this(atVertex, viaEdge, timeSeconds, timeSeconds, options);
+            this(atVertex, viaEdge, startTime.toInstant(), startTime, options);
         }
 
-        public State(int origin, int viaEdge, long timeSeconds, long startTime,
+        public State(int origin, int viaEdge, Instant timeSeconds, ZonedDateTime startTime,
             TransportNetworkRequest options) {
             this.weight = 0;
             this.vertex = origin;
             this.backEdge = viaEdge;
-            this.time = timeSeconds * 1000;
+            this.time = timeSeconds;
             this.startTime = startTime;
             this.options = options;
         }
@@ -333,16 +336,11 @@ public class StreetRouter {
         }
 
         public State reversedClone() {
-            State newState = new State(this.vertex, -1, getTimeSeconds() , options.reversedClone());
+            State newState = new State(this.vertex, -1, time, startTime, options.reversedClone());
             return newState;
         }
 
-        /** Returns time in seconds since epoch */
-        public long getTimeSeconds() {
-            return time / 1000;
-        }
-
-        public long getTimeInMillis() {
+        public Instant getTime() {
             return time;
         }
 
@@ -351,8 +349,9 @@ public class StreetRouter {
             return transportNetwork.streetLayer.vertexStore.getCursor(vertex);
         }
 
+        //TODO: Math ABSolute?
         public long getElapsedTimeSeconds() {
-            return Math.abs(getTimeSeconds() - startTime);
+            return Duration.between(time, startTime.toInstant()).getSeconds();
         }
 
         public EdgeStore.Edge getBackEdge(TransportNetwork transportNetwork) {

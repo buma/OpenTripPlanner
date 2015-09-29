@@ -391,7 +391,7 @@ public class TransportNetworkRoutingResource {
                         gregCal.setTimeZone(tz);
                     }
                     Date d2 = gregCal.getTime();
-                    request.setDateTime(d2);
+                    request.setDateTime(d2, tz);
                 } catch (DatatypeConfigurationException e) {
                     request.setDateTime(date, time, tz);
                 }
