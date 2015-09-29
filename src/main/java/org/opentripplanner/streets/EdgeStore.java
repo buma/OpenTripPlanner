@@ -366,6 +366,11 @@ public class EdgeStore implements Serializable {
             s1.backState = s0;
             s1.nextState = null;
             s1.weight = s0.weight + getLengthMm() / 1000;
+            double speedms = getSpeed() / VertexStore.FIXED_FACTOR;
+            double length = getLengthM();
+            int time = (int) Math.ceil(length / speedms);
+            s1.incrementTimeInSeconds(time);
+            s1.incrementNonTransitDistance(length);
             return s1;
         }
 

@@ -149,6 +149,8 @@ public class TransportNetworkPathToTripPlanConverter {
         itinerary.startTime = makeCalendar(states[0], transportNetwork);
         itinerary.endTime = makeCalendar(lastState, transportNetwork);
 
+        itinerary.walkDistance = lastState.getNonTransitDistance();
+
         return itinerary;
     }
 

@@ -99,7 +99,6 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
         GregorianCalendar calendar = new GregorianCalendar(tz);
         calendar.setTime(dateObject);
         zonedDateTime = calendar.toZonedDateTime();
-        LOG.info("DateTime:{}", zonedDateTime);
         super.setDateTime(dateObject);
     }
 

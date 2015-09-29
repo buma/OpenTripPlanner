@@ -256,15 +256,20 @@ public class StreetRouter {
     }
 
     public static class State implements Cloneable {
+
+
         public int vertex;
         public int weight;
         public int backEdge;
+        boolean traversingBackward;
 
         // the current time at this state, in milliseconds UNIX time
         protected Instant time;
 
         // date time when this search was started in seconds UNIX time
         protected ZonedDateTime startTime;
+
+        private double nonTransitDistance;
 
         protected TransportNetworkRequest options;
         public State backState; // previous state in the path chain
@@ -275,6 +280,8 @@ public class StreetRouter {
             this.vertex = atVertex;
             this.backEdge = viaEdge;
             this.backState = null;
+            this.traversingBackward = false;
+            this.nonTransitDistance = 0;
         }
 
         public State(int atVertex, int viaEdge, ZonedDateTime startTime,
@@ -290,6 +297,8 @@ public class StreetRouter {
             this.time = timeSeconds;
             this.startTime = startTime;
             this.options = options;
+            this.traversingBackward = options.arriveBy;
+            this.nonTransitDistance = 0;
         }
 
         public int getWeightDelta() {
@@ -321,14 +330,24 @@ public class StreetRouter {
                 child.backState = ret;
                 child.backEdge = edge;
                 EdgeStore.Edge origBackEdge = orig.getBackEdge(transportNetwork);
-                if (ret.vertex == origBackEdge.getFromVertex()) {
+                if (origBackEdge.getFromVertex() == origBackEdge.getToVertex()
+                    && ret.vertex == origBackEdge.getFromVertex()) {
+                    traversingBackward = ret.getOptions().arriveBy;
                     child.vertex = origBackEdge.getToVertex();
-                    //    traversingBackward = false;
+                } else if (ret.vertex == origBackEdge.getFromVertex()) {
+                    child.vertex = origBackEdge.getToVertex();
+                    traversingBackward = false;
                 }else if (ret.vertex == origBackEdge.getToVertex()) {
-                    //traversingBackward = true
                     child.vertex = origBackEdge.getFromVertex();
+                    traversingBackward = true;
+                }
+                if (traversingBackward != ret.getOptions().arriveBy) {
+                    LOG.error("Actual traversal direction does not match traversal direction in TraverseOptions.");
+                    //defectiveTraversal = true;
                 }
                 child.weight += orig.getWeightDelta();
+                child.incrementTimeInSeconds(orig.getAbsTimeDeltaSeconds());
+                child.incrementNonTransitDistance(orig.getNonTransitDistance());
                 ret = child;
                 orig = orig.backState;
             }
@@ -349,9 +368,9 @@ public class StreetRouter {
             return transportNetwork.streetLayer.vertexStore.getCursor(vertex);
         }
 
-        //TODO: Math ABSolute?
+        //FIXME: this doesn't work correctly yet (it is usually 0)
         public long getElapsedTimeSeconds() {
-            return Duration.between(time, startTime.toInstant()).getSeconds();
+            return Duration.between(startTime.toInstant(), time).abs().getSeconds();
         }
 
         public EdgeStore.Edge getBackEdge(TransportNetwork transportNetwork) {
@@ -360,6 +379,48 @@ public class StreetRouter {
 
         public TransportNetworkRequest getOptions() {
             return options;
+        }
+
+        public long getAbsTimeDeltaSeconds() {
+            return Math.abs(getTimeDeltaSeconds());
+        }
+
+        public long getTimeDeltaSeconds() {
+            if (backState != null) {
+                return Duration.between(backState.time, time).getSeconds();
+            }
+            return 0;
+        }
+
+        public double getNonTransitDistance() {
+            if (backState != null) {
+                return Math.abs(this.nonTransitDistance - backState.nonTransitDistance);
+            } else {
+                return 0.0;
+            }
+        }
+
+        public void incrementTimeInSeconds(long seconds) {
+            if (seconds < 0) {
+                LOG.warn("A state's time is being incremented by a negative amount while traversing edge "
+                    );
+                //defectiveTraversal = true;
+                return;
+            }
+            if (traversingBackward) {
+                time = time.minusSeconds(seconds);
+            } else {
+                time = time.plusSeconds(seconds);
+            }
+        }
+
+        public void incrementNonTransitDistance(double length) {
+            if (length < 0) {
+                LOG.warn("A state's non transit distance is being incremented by a negative amount.");
+                //defectiveTraversal = true;
+                return;
+            }
+            nonTransitDistance += length;
         }
     }
 
