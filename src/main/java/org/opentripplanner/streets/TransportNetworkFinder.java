@@ -110,13 +110,9 @@ public class TransportNetworkFinder {
             return null;
         }
 
-        TransportNetworkContext ctx = null;
-
-        if (ctx == null) {
-            ctx = new TransportNetworkContext(options, router.transportNetwork);
-            ctx.check();
+        if (options.getTransportContext() == null) {
+            options.setTransportContext(router.transportNetwork);
         }
-        options.setTransportContext(ctx);
         // without transit, we'd just just return multiple copies of the same on-street itinerary
         if (!options.modes.isTransit()) {
             options.numItineraries = 1;
@@ -132,13 +128,13 @@ public class TransportNetworkFinder {
         LOG.debug("BEGIN SEARCH");
         List<TransportNetworkPath> paths = Lists.newArrayList();
         StreetRouter streetRouter = new StreetRouter(options);
-        streetRouter.setOrigin(ctx.origin, options);
-        streetRouter.toVertex = ctx.target.vertex0;
+        streetRouter.setOrigin(options.getTransportContext().origin, options);
+        streetRouter.toVertex = options.getTransportContext().target.vertex0;
         streetRouter.route();
         TransportNetworkPath first = new TransportNetworkPath(streetRouter.getLastState(), router.transportNetwork, options.arriveBy);
         //paths.add(first);
         //streetRouter.setOrigin(ctx.origin, options);
-        streetRouter.toVertex = ctx.target.vertex1;
+        streetRouter.toVertex = options.getTransportContext().target.vertex1;
         streetRouter.route();
         TransportNetworkPath second = new TransportNetworkPath(streetRouter.getLastState(), router.transportNetwork, options.arriveBy);
 

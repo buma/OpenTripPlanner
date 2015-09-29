@@ -15,7 +15,6 @@ package org.opentripplanner.streets;
 
 import org.joda.time.LocalDate;
 import org.opentripplanner.api.resource.DebugOutput;
-import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.error.GraphNotFoundException;
 import org.opentripplanner.routing.error.TransitTimesException;
 import org.opentripplanner.routing.error.VertexNotFoundException;
@@ -42,7 +41,7 @@ public class TransportNetworkContext {
 
     private final Split toSplit;
 
-    public RoutingRequest opt; // not final so we can reverse-clone
+    public TransportNetworkRequest opt; // not final so we can reverse-clone
 
     public final TransportNetwork transportNetwork;
 
@@ -67,11 +66,11 @@ public class TransportNetworkContext {
     /** Indicates that a maximum slope constraint was specified but was removed during routing to produce a result. */
     public boolean slopeRestrictionRemoved = false;
 
-    public TransportNetworkContext(RoutingRequest options, TransportNetwork transportNetwork) {
+    public TransportNetworkContext(TransportNetworkRequest options, TransportNetwork transportNetwork) {
         this(options, transportNetwork, null, null, true);
     }
 
-    public TransportNetworkContext(RoutingRequest routingRequest, TransportNetwork transportNetwork,
+    public TransportNetworkContext(TransportNetworkRequest routingRequest, TransportNetwork transportNetwork,
         VertexStore.Vertex fromVertex, VertexStore.Vertex toVertex, boolean findPlaces) {
         if (transportNetwork == null) {
             throw new GraphNotFoundException();
