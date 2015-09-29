@@ -260,7 +260,7 @@ public class StreetRouter {
         // the current time at this state, in milliseconds UNIX time
         protected long time;
 
-        // date time when this search was started in milliseconds UNIX time
+        // date time when this search was started in seconds UNIX time
         protected long startTime;
 
         protected TransportNetworkRequest options;
@@ -339,13 +339,11 @@ public class StreetRouter {
 
         /** Returns time in seconds since epoch */
         public long getTimeSeconds() {
-            //time
-            return 1000 / 1000;
+            return time / 1000;
         }
 
-        //TODO: actual time
         public long getTimeInMillis() {
-            return getElapsedTimeSeconds()*1000;
+            return time;
         }
 
         //TODO: are all vertices in Street vertex store? What about transit stops?
@@ -354,7 +352,7 @@ public class StreetRouter {
         }
 
         public long getElapsedTimeSeconds() {
-            return (long)weight;
+            return Math.abs(getTimeSeconds() - startTime);
         }
 
         public EdgeStore.Edge getBackEdge(TransportNetwork transportNetwork) {
