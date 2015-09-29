@@ -6,8 +6,11 @@ import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
+import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.streets.StreetLayer;
 import org.opentripplanner.streets.StreetRouter;
+import org.opentripplanner.streets.TransportNetworkRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +38,15 @@ public class TransferFinder {
     public TransferFinder(TransitLayer transitLayer, StreetLayer streetLayer, int radiusMeters) {
         this.transitLayer = transitLayer;
         this.streetLayer = streetLayer;
-        streetRouter = new StreetRouter(streetLayer);
+        TransportNetwork transportNetwork = new TransportNetwork();
+        transportNetwork.streetLayer = streetLayer;
+        transportNetwork.transitLayer = transitLayer;
+
+        TransportNetworkRequest transportNetworkRequest = new TransportNetworkRequest(new TraverseModeSet(
+            TraverseMode.WALK));
+        transportNetworkRequest.setTimeIndependantSearch(true);
+        transportNetworkRequest.setDummyRoutingContext(transportNetwork);
+        streetRouter = new StreetRouter(transportNetworkRequest);
         streetRouter.distanceLimitMeters = radiusMeters;
     }
 

@@ -1,6 +1,7 @@
 package org.opentripplanner.streets;
 
 import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.transit.TransportNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,11 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
 
     private TransportNetworkContext transportContext;
 
+    /** If this is true time is ignored when checking time dependant speeds/ turn restrictions etc
+     * This is true when searching on street network between stops, to speed up actual searches
+     * and when pruning street graph **/
+    private boolean timeIndependantSearch = false;
+
     /**
      * Constructor for options; modes defaults to walk and transit
      */
@@ -21,8 +27,22 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
         super();
     }
 
+    public TransportNetworkRequest(TraverseModeSet modes) {
+        this();
+        this.setModes(modes);
+    }
+
     public TransportNetworkContext getTransportContext() {
         return transportContext;
+    }
+
+    /**
+     * Sets context without searching for start/end vertex. It is used in batch searches
+     * like prunning or {@link org.opentripplanner.transit.TransferFinder}
+     * @param transportNetwork
+     */
+    public void setDummyRoutingContext(TransportNetwork transportNetwork) {
+        transportContext = new TransportNetworkContext(this, transportNetwork, null, null, false);
     }
 
     public void setTransportContext(TransportNetwork transportNetwork) {
@@ -52,5 +72,9 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
         ret.reverseOptimizing = !ret.reverseOptimizing; // this is not strictly correct
         ret.useBikeRentalAvailabilityInformation = false;
         return ret;
+    }
+
+    public void setTimeIndependantSearch(boolean timeIndependantSearch) {
+        this.timeIndependantSearch = timeIndependantSearch;
     }
 }

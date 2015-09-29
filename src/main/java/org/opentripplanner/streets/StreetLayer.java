@@ -19,11 +19,14 @@ import org.opentripplanner.graph_builder.module.osm.OSMFilter;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
 import org.opentripplanner.reflect.ReflectionLibrary;
+import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.standalone.GraphBuilderParameters;
 import org.opentripplanner.streets.permissions.AccessRestrictionsAlgorithm;
 import org.opentripplanner.streets.permissions.OSMAccessPermissions;
 import org.opentripplanner.streets.permissions.TransportModeType;
 import org.opentripplanner.transit.TransitLayer;
+import org.opentripplanner.transit.TransportNetwork;
 import org.opentripplanner.util.WorldEnvelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -460,7 +463,7 @@ public class StreetLayer implements Serializable {
      * algorithm, see http://stackoverflow.com/questions/1348783.
      */
     public void removeDisconnectedSubgraphs(int minSubgraphSize) {
-        LOG.info("Removing subgraphs with fewer than {} vertices");
+        LOG.info("Removing subgraphs with fewer than {} vertices", minSubgraphSize);
         boolean edgeListsBuilt = incomingEdges != null;
 
         if (!edgeListsBuilt)
@@ -473,13 +476,22 @@ public class StreetLayer implements Serializable {
         TIntSet verticesToRemove = new TIntHashSet();
         TIntSet edgesToRemove = new TIntHashSet();
 
+        TransportNetwork transportNetwork = new TransportNetwork();
+        transportNetwork.streetLayer = this;
+
+        TransportNetworkRequest transportNetworkRequest = new TransportNetworkRequest(new TraverseModeSet(
+            TraverseMode.WALK));
+        transportNetworkRequest.setTimeIndependantSearch(true);
+        transportNetworkRequest.setDummyRoutingContext(transportNetwork);
+
+
         for (int vertex = 0; vertex < vertexStore.nVertices; vertex++) {
             // N.B. this is not actually running a search for every vertex as after the first few
             // almost all of the vertices are labeled
             if (vertexLabels.containsKey(vertex))
                 continue;
 
-            StreetRouter r = new StreetRouter(this);
+            StreetRouter r = new StreetRouter(transportNetworkRequest);
             r.setOrigin(vertex);
             // walk to the end of the graph
             r.distanceLimitMeters = 100000;
