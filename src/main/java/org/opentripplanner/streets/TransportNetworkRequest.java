@@ -44,4 +44,13 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
     public TransportNetworkRequest clone() {
         return (TransportNetworkRequest) super.clone();
     }
+
+    public TransportNetworkRequest reversedClone() {
+        LOG.info("Reverse cloned request");
+        TransportNetworkRequest ret = this.clone();
+        ret.setArriveBy(!ret.arriveBy);
+        ret.reverseOptimizing = !ret.reverseOptimizing; // this is not strictly correct
+        ret.useBikeRentalAvailabilityInformation = false;
+        return ret;
+    }
 }

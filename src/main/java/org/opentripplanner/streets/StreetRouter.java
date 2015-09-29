@@ -333,7 +333,7 @@ public class StreetRouter {
         }
 
         public State reversedClone() {
-            State newState = new State(this.vertex, -1);
+            State newState = new State(this.vertex, -1, getTimeSeconds() , options.reversedClone());
             return newState;
         }
 
