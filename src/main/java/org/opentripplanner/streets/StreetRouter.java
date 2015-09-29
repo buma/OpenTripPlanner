@@ -148,34 +148,15 @@ public class StreetRouter {
             LOG.info("No street was found near the specified origin point of {}, {}.", lat, lon);
             return;
         }
-        setOrigin(split);
+        setOrigin(split, transportNetworkRequest);
     }
 
     @Deprecated
-    public void setOrigin(Split split) {
-        if (split == null) {
-            LOG.info("No street was found near the specified origin point.");
-            return;
-        }
-        bestStates.clear();
-        queue.reset();
-        lastState = null;
-        State startState0 = new State(split.vertex0, -1);
-        State startState1 = new State(split.vertex1, -1);
-        // TODO walk speed, assuming 1 m/sec currently.
-        startState0.weight = split.distance0_mm / 1000;
-        startState1.weight = split.distance1_mm / 1000;
-        bestStates.put(split.vertex0, startState0);
-        bestStates.put(split.vertex1, startState1);
-        queue.insert(startState0, startState0.weight);
-        queue.insert(startState1, startState1.weight);
-    }
-
     public void setOrigin (int fromVertex) {
         bestStates.clear();
         queue.reset();
         lastState = null;
-        State startState = new State(fromVertex, -1);
+        State startState = new State(fromVertex, -1, transportNetworkRequest.getSecondsSinceEpoch(), transportNetworkRequest);
         bestStates.put(fromVertex, startState);
         queue.insert(startState, 0);
     }
