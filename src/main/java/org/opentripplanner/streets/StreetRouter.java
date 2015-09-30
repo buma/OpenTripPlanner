@@ -222,6 +222,9 @@ public class StreetRouter {
             edgeList.forEach(edgeIndex -> {
                 edge.seek(edgeIndex);
                 State s1 = edge.traverse(s0);
+                if (s1 == null) {
+                    return true;
+                }
                 if (!goalDirection && s1.weight > distanceLimitMeters) {
                     return true; // Iteration over edges should continue.
                 }

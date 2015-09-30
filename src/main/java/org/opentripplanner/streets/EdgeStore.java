@@ -386,11 +386,11 @@ public class EdgeStore implements Serializable {
         private StreetRouter.State doTraverse(StreetRouter.State s0, TransportNetworkRequest options,
             TraverseMode traverseMode) {
             TraverseMode backMode = s0.getBackMode();
-            /*
-            Searching with permissions is currently very buggy
+
+            //Searching with permissions is currently very buggy
             if (!canTraverse(options, traverseMode)) {
                 return null;
-            }*/
+            }
             StreetRouter.State s1 = s0.clone();
             if (options.arriveBy) {
                 s1.vertex = getFromVertex();
