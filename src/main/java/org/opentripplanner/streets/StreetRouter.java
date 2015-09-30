@@ -8,6 +8,8 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
+import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.transit.TransportNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -272,6 +274,14 @@ public class StreetRouter {
         private double nonTransitDistance;
 
         protected TransportNetworkRequest options;
+
+        protected TraverseMode nonTransitMode;
+
+        /**
+         * The mode that was used to traverse the backEdge
+         */
+        protected TraverseMode backMode;
+
         public State backState; // previous state in the path chain
         public State nextState; // next state at the same location (for turn restrictions and other cases with co-dominant states)
 
@@ -282,11 +292,31 @@ public class StreetRouter {
             this.backState = null;
             this.traversingBackward = false;
             this.nonTransitDistance = 0;
+            TraverseModeSet modes = options.modes;
+            if (modes.getCar())
+                nonTransitMode = TraverseMode.CAR;
+            else if (modes.getWalk())
+                nonTransitMode = TraverseMode.WALK;
+            else if (modes.getBicycle())
+                nonTransitMode = TraverseMode.BICYCLE;
+            else
+                nonTransitMode = null;
         }
 
         public State(int atVertex, int viaEdge, ZonedDateTime startTime,
             TransportNetworkRequest options) {
             this(atVertex, viaEdge, startTime.toInstant(), startTime, options);
+        }
+
+        @Override
+        public String toString() {
+            return "State{" +
+                "weight=" + weight +
+                ", time=" + time +
+                ", vertex=" + vertex +
+                ", backMode=" + backMode +
+                ", nonTransitDistance=" + nonTransitDistance +
+                '}';
         }
 
         public State(int origin, int viaEdge, Instant timeSeconds, ZonedDateTime startTime,
@@ -299,6 +329,15 @@ public class StreetRouter {
             this.options = options;
             this.traversingBackward = options.arriveBy;
             this.nonTransitDistance = 0;
+            TraverseModeSet modes = options.modes;
+            if (modes.getCar())
+                nonTransitMode = TraverseMode.CAR;
+            else if (modes.getWalk())
+                nonTransitMode = TraverseMode.WALK;
+            else if (modes.getBicycle())
+                nonTransitMode = TraverseMode.BICYCLE;
+            else
+                nonTransitMode = null;
         }
 
         public int getWeightDelta() {
@@ -348,6 +387,7 @@ public class StreetRouter {
                 child.weight += orig.getWeightDelta();
                 child.incrementTimeInSeconds(orig.getAbsTimeDeltaSeconds());
                 child.incrementNonTransitDistance(orig.getNonTransitDistance());
+                child.setBackMode(orig.getBackMode());
                 ret = child;
                 orig = orig.backState;
             }
@@ -421,6 +461,18 @@ public class StreetRouter {
                 return;
             }
             nonTransitDistance += length;
+        }
+
+        public TraverseMode getNonTransitMode() {
+            return nonTransitMode;
+        }
+
+        public TraverseMode getBackMode() {
+            return backMode;
+        }
+
+        public void setBackMode(TraverseMode backMode) {
+            this.backMode = backMode;
         }
     }
 

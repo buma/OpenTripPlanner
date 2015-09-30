@@ -12,6 +12,8 @@ import gnu.trove.map.hash.TLongObjectHashMap;
 import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TLongHashSet;
 import org.opentripplanner.common.geometry.GeometryUtils;
+import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.streets.permissions.OSMAccessPermissions;
 import org.opentripplanner.streets.permissions.TransportModeType;
@@ -354,8 +356,31 @@ public class EdgeStore implements Serializable {
             return !isBackward;
         }
 
+        private boolean canTraverse(TransportNetworkRequest options, TraverseMode mode) {
+            if (options.wheelchairAccessible) {
+                if (!(getFlag(Flag.ALLOWS_PEDESTRIAN) && getFlag(Flag.ALLOWS_WHEELCHAIR))) {
+                    return false;
+                }
+                //maxSlope
+            }
+            StreetTraversalPermission perm = getPermissions();
+            return perm.allows(mode);
+        }
+
         public StreetRouter.State traverse (StreetRouter.State s0) {
             final TransportNetworkRequest options = s0.getOptions();
+            final TraverseMode currMode = s0.getNonTransitMode();
+            return doTraverse(s0, options, s0.getNonTransitMode());
+        }
+
+        private StreetRouter.State doTraverse(StreetRouter.State s0, TransportNetworkRequest options,
+            TraverseMode traverseMode) {
+            TraverseMode backMode = s0.getBackMode();
+            /*
+            Searching with permissions is currently very buggy
+            if (!canTraverse(options, traverseMode)) {
+                return null;
+            }*/
             StreetRouter.State s1 = s0.clone();
             if (options.arriveBy) {
                 s1.vertex = getFromVertex();
@@ -371,6 +396,7 @@ public class EdgeStore implements Serializable {
             int time = (int) Math.ceil(length / speedms);
             s1.incrementTimeInSeconds(time);
             s1.incrementNonTransitDistance(length);
+            s1.setBackMode(traverseMode);
             return s1;
         }
 

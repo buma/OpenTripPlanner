@@ -304,8 +304,7 @@ public class TransportNetworkPathToTripPlanConverter {
             LOG.info("Edge: {}, {}", edge.getOSMID(), edge.getName(Locale.ENGLISH));
         }
 
-        //add mode and alerts
-        leg.mode = TraverseMode.WALK.toString();
+        addModeAndAlerts(transportNetwork, leg, states, requestedLocale);
 
         TimeZone timeZone = leg.startTime.getTimeZone();
         leg.agencyTimeZoneOffset = timeZone.getOffset(leg.startTime.getTimeInMillis());
@@ -318,6 +317,27 @@ public class TransportNetworkPathToTripPlanConverter {
         leg.legGeometry = PolylineEncoder.createEncodings(geometry);
 
         return leg;
+    }
+
+    /**
+     * Add mode and alerts fields to a {@link Leg}.
+     *
+     * Currently only mode is added
+     *
+     * @param leg The leg to add the mode and alerts to
+     * @param states The states that go with the leg
+     */
+    private static void addModeAndAlerts(TransportNetwork transportNetwork, Leg leg,
+        StreetRouter.State[] states, Locale requestedLocale) {
+        for (StreetRouter.State state: states) {
+            TraverseMode mode = state.getBackMode();
+
+            //TODO:alerts
+
+            if (mode != null) {
+                leg.mode = mode.toString();
+            }
+        }
     }
 
     /**
