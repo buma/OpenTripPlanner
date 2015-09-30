@@ -23,6 +23,7 @@ import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.error.TrivialPathException;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.spt.GraphPath;
@@ -114,6 +115,81 @@ public class TransportNetworkPathToTripPlanConverter {
     }
 
     /**
+     * Slice a {@link State} array at the leg boundaries. Leg switches occur when:
+     * 1. A LEG_SWITCH mode (which itself isn't part of any leg) is seen
+     * 2. The mode changes otherwise, for instance from BICYCLE to WALK
+     * 3. A PatternInterlineDwell edge (i.e. interlining) is seen
+     *
+     * @param states The one-dimensional array of input states
+     * @return An array of arrays of states belonging to a single leg (i.e. a two-dimensional array)
+     */
+    private static StreetRouter.State[][] sliceStates(StreetRouter.State[] states) {
+        boolean trivial = true;
+
+        for (StreetRouter.State state : states) {
+            TraverseMode traverseMode = state.getBackMode();
+
+            if (traverseMode != null && traverseMode != TraverseMode.LEG_SWITCH) {
+                trivial = false;
+                break;
+            }
+        }
+
+        if (trivial) {
+            throw new TrivialPathException();
+        }
+
+        int[] legIndexPairs = {0, states.length - 1};
+        List<int[]> legsIndexes = new ArrayList<int[]>();
+
+        for (int i = 1; i < states.length - 1; i++) {
+            TraverseMode backMode = states[i].getBackMode();
+            TraverseMode forwardMode = states[i + 1].getBackMode();
+
+            if (backMode == null || forwardMode == null) continue;
+
+            //Edge edge = states[i + 1].getBackEdge();
+
+            if (backMode == TraverseMode.LEG_SWITCH || forwardMode == TraverseMode.LEG_SWITCH) {
+                if (backMode != TraverseMode.LEG_SWITCH) {              // Start of leg switch
+                    legIndexPairs[1] = i;
+                } else if (forwardMode != TraverseMode.LEG_SWITCH) {    // End of leg switch
+                    if (legIndexPairs[1] != states.length - 1) {
+                        legsIndexes.add(legIndexPairs);
+                    }
+                    legIndexPairs = new int[] {i, states.length - 1};
+                }
+            } else if (backMode != forwardMode) {                       // Mode change => leg switch
+                legIndexPairs[1] = i;
+                legsIndexes.add(legIndexPairs);
+                legIndexPairs = new int[] {i, states.length - 1};
+            }
+
+            /*else if (edge instanceof PatternInterlineDwell) {         // Interlining => leg switch
+                legIndexPairs[1] = i;
+                legsIndexes.add(legIndexPairs);
+                legIndexPairs = new int[] {i + 1, states.length - 1};
+            }*/
+        }
+
+        // Final leg
+        legsIndexes.add(legIndexPairs);
+
+        StreetRouter.State[][] legsStates = new StreetRouter.State[legsIndexes.size()][];
+
+        // Fill the two-dimensional array with states
+        for (int i = 0; i < legsStates.length; i++) {
+            legIndexPairs = legsIndexes.get(i);
+            legsStates[i] = new StreetRouter.State[legIndexPairs[1] - legIndexPairs[0] + 1];
+            for (int j = 0; j <= legIndexPairs[1] - legIndexPairs[0]; j++) {
+                legsStates[i][j] = states[legIndexPairs[0] + j];
+            }
+        }
+
+        return legsStates;
+    }
+
+    /**
      * Generate an itinerary from a {@link GraphPath}. This method first slices the list of states
      * at the leg boundaries. These smaller state arrays are then used to generate legs. Finally the
      * rest of the itinerary is generated based on the complete state array.
@@ -136,9 +212,8 @@ public class TransportNetworkPathToTripPlanConverter {
         TransportNetwork transportNetwork = path.getTransportNetwork();
 
 
-        //TODO: sliceStates (if it is actually necessary)
-        StreetRouter.State[][] legsStates = new StreetRouter.State[1][];
-        legsStates[0]=states;
+        StreetRouter.State[][] legsStates = sliceStates(states);
+
         for (StreetRouter.State[] legStates : legsStates) {
             itinerary.addLeg(generateLeg(transportNetwork, legStates, showIntermediateStops, requestedLocale));
         }

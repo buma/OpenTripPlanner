@@ -288,6 +288,7 @@ public class StreetRouter {
         public State backState; // previous state in the path chain
         public State nextState; // next state at the same location (for turn restrictions and other cases with co-dominant states)
 
+        private boolean backWalkingBike;
 
         public State(int atVertex, int viaEdge) {
             this.vertex = atVertex;
@@ -492,6 +493,14 @@ public class StreetRouter {
                 return;
             }
             this.weight += weight;
+        }
+
+        public boolean isBackWalkingBike() {
+            return backWalkingBike;
+        }
+
+        public void setBackWalkingBike(boolean backWalkingBike) {
+            this.backWalkingBike = backWalkingBike;
         }
     }
 

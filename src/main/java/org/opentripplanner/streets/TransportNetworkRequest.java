@@ -25,6 +25,8 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
 
     private TransportNetworkContext transportContext;
 
+    public TransportNetworkRequest bikeWalkingOptions;
+
     /** If this is true time is ignored when checking time dependant speeds/ turn restrictions etc
      * This is true when searching on street network between stops, to speed up actual searches
      * and when pruning street graph **/
@@ -37,11 +39,42 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
      */
     public TransportNetworkRequest() {
         super();
+        bikeWalkingOptions = this;
     }
 
     public TransportNetworkRequest(TraverseModeSet modes) {
         this();
         this.setModes(modes);
+    }
+
+    public void setModes(TraverseModeSet modes) {
+        this.modes = modes;
+        if (modes.getBicycle()) {
+            // This alternate routing request is used when we get off a bike to take a shortcut and are
+            // walking alongside the bike. FIXME why are we only copying certain fields instead of cloning the request?
+            bikeWalkingOptions = new TransportNetworkRequest();
+            bikeWalkingOptions.setArriveBy(this.arriveBy);
+            bikeWalkingOptions.maxWalkDistance = maxWalkDistance;
+            bikeWalkingOptions.maxPreTransitTime = maxPreTransitTime;
+            bikeWalkingOptions.walkSpeed = walkSpeed * 0.8; // walking bikes is slow
+            bikeWalkingOptions.walkReluctance = walkReluctance * 2.7; // and painful
+            bikeWalkingOptions.optimize = optimize;
+            bikeWalkingOptions.modes = modes.clone();
+            bikeWalkingOptions.modes.setBicycle(false);
+            bikeWalkingOptions.modes.setWalk(true);
+            bikeWalkingOptions.walkingBike = true;
+            bikeWalkingOptions.bikeSwitchTime = bikeSwitchTime;
+            bikeWalkingOptions.bikeSwitchCost = bikeSwitchCost;
+            bikeWalkingOptions.stairsReluctance = stairsReluctance * 5; // carrying bikes on stairs is awful
+        } else if (modes.getCar()) {
+            bikeWalkingOptions = new TransportNetworkRequest();
+            bikeWalkingOptions.setArriveBy(this.arriveBy);
+            bikeWalkingOptions.maxWalkDistance = maxWalkDistance;
+            bikeWalkingOptions.maxPreTransitTime = maxPreTransitTime;
+            bikeWalkingOptions.modes = modes.clone();
+            bikeWalkingOptions.modes.setBicycle(false);
+            bikeWalkingOptions.modes.setWalk(true);
+        }
     }
 
     public TransportNetworkContext getTransportContext() {

@@ -385,10 +385,19 @@ public class EdgeStore implements Serializable {
 
         private StreetRouter.State doTraverse(StreetRouter.State s0, TransportNetworkRequest options,
             TraverseMode traverseMode) {
+            boolean walkingBike = options.walkingBike;
+            boolean backWalkingBike = s0.isBackWalkingBike();
             TraverseMode backMode = s0.getBackMode();
 
-            //Searching with permissions is currently very buggy
+            // Ensure we are actually walking, when walking a bike
+            backWalkingBike &= TraverseMode.WALK.equals(backMode);
+            walkingBike &= TraverseMode.WALK.equals(traverseMode);
+
+            /* Check whether this street allows the current mode. If not and we are biking, attempt to walk the bike. */
             if (!canTraverse(options, traverseMode)) {
+                if (traverseMode == TraverseMode.BICYCLE) {
+                    return doTraverse(s0, options.bikeWalkingOptions, TraverseMode.WALK);
+                }
                 return null;
             }
             StreetRouter.State s1 = s0.clone();
@@ -411,7 +420,10 @@ public class EdgeStore implements Serializable {
                 //TODO: bicycle optimizations
                 weight = length / speedms;
             } else {
-                //TODO: walking bike
+                if (walkingBike) {
+                    time = getSlopeSpeedEffectiveLength() / speedms;
+                }
+
                 weight = time;
                 if (traverseMode.equals(TraverseMode.WALK)) {
                     //costs based on elevation
@@ -430,10 +442,21 @@ public class EdgeStore implements Serializable {
 
             //P+R soft walk limit etc.
             int roundedTime = (int) Math.ceil(time);
+            s1.setBackMode(traverseMode);
+            s1.setBackWalkingBike(walkingBike);
+
+            if (walkingBike || TraverseMode.BICYCLE.equals(traverseMode)) {
+                if (!(backWalkingBike || TraverseMode.BICYCLE.equals(backMode))) {
+                    s1.incrementTimeInSeconds(options.bikeSwitchTime);
+                    s1.incrementWeight(options.bikeSwitchCost);
+                }
+            }
+            s1.incrementNonTransitDistance(length);
+
             s1.incrementTimeInSeconds(roundedTime);
             s1.incrementWeight(weight);
-            s1.incrementNonTransitDistance(length);
-            s1.setBackMode(traverseMode);
+
+
             return s1;
         }
 
