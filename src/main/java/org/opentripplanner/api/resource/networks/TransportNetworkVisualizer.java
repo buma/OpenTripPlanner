@@ -168,7 +168,7 @@ import static javax.measure.unit.NonSI.KILOMETERS_PER_HOUR;
                         if (detail) {
                             gen.writeNumberField("osm_id", cursor.getOSMID());
                             gen.writeStringField("name", cursor.getName(Locale.ENGLISH));
-                            double speedMs = cursor.getSpeed() / VertexStore.FIXED_FACTOR;
+                            double speedMs = cursor.getSpeed();
                             Color color = palette
                                 .getColor(Math.round(unitConverter.convert(speedMs)));
                             String hexColor = String

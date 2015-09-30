@@ -384,7 +384,7 @@ public class StreetRouter {
                     LOG.error("Actual traversal direction does not match traversal direction in TraverseOptions.");
                     //defectiveTraversal = true;
                 }
-                child.weight += orig.getWeightDelta();
+                child.incrementWeight(orig.getWeightDelta());
                 child.incrementTimeInSeconds(orig.getAbsTimeDeltaSeconds());
                 child.incrementNonTransitDistance(orig.getNonTransitDistance());
                 child.setBackMode(orig.getBackMode());
@@ -473,6 +473,22 @@ public class StreetRouter {
 
         public void setBackMode(TraverseMode backMode) {
             this.backMode = backMode;
+        }
+
+        public void incrementWeight(double weight) {
+            if (Double.isNaN(weight)) {
+                LOG.warn("A state's weight is being incremented by NaN while traversing edge "
+                    + backEdge);
+                //defectiveTraversal = true;
+                return;
+            }
+            if (weight < 0) {
+                LOG.warn("A state's weight is being incremented by a negative amount while traversing edge "
+                    + backEdge);
+                //defectiveTraversal = true;
+                return;
+            }
+            this.weight += weight;
         }
     }
 

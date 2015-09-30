@@ -73,11 +73,11 @@ public class StreetLayerTest extends TestCase {
         double lon = 15.6126969;
 
         int forwardEdgeFlags = streetLayer.edgeStore.getCursor(0).getFlags();
-        int forwardEdgeSpeed = streetLayer.edgeStore.getCursor(0).getSpeed();
+        int forwardEdgeSpeed = streetLayer.edgeStore.getCursor(0).getSpeedRaw();
         String forwardEdgeName = streetLayer.edgeStore.getCursor(0).getName();
 
         int backwardEdgeFlags = streetLayer.edgeStore.getCursor(1).getFlags();
-        int backwardEdgeSpeed = streetLayer.edgeStore.getCursor(1).getSpeed();
+        int backwardEdgeSpeed = streetLayer.edgeStore.getCursor(1).getSpeedRaw();
         String backwardEdgeName = streetLayer.edgeStore.getCursor(1).getName();
 
         //This inserts vertex around the middle of the way.
@@ -87,25 +87,25 @@ public class StreetLayerTest extends TestCase {
         EdgeStore.Edge oldForwardEdge = streetLayer.edgeStore.getCursor(0);
         //This should always work since in existing edges only length and toVertex changes
         assertEquals(forwardEdgeFlags, oldForwardEdge.getFlags());
-        assertEquals(forwardEdgeSpeed, oldForwardEdge.getSpeed());
+        assertEquals(forwardEdgeSpeed, oldForwardEdge.getSpeedRaw());
         assertEquals(forwardEdgeName, oldForwardEdge.getName());
         //Edge from B to A
         EdgeStore.Edge oldBackwardEdge = streetLayer.edgeStore.getCursor(1);
         assertEquals(backwardEdgeFlags, oldBackwardEdge.getFlags());
-        assertEquals(backwardEdgeSpeed, oldBackwardEdge.getSpeed());
+        assertEquals(backwardEdgeSpeed, oldBackwardEdge.getSpeedRaw());
         assertEquals(backwardEdgeName, oldBackwardEdge.getName());
 
         //Here errors can happen since flags, names, speeds and everything needs to be copied to new edges
         //Edge from B to C
         EdgeStore.Edge newForwardEdge = streetLayer.edgeStore.getCursor(2);
         assertEquals(forwardEdgeFlags, newForwardEdge.getFlags());
-        assertEquals(forwardEdgeSpeed, newForwardEdge.getSpeed());
+        assertEquals(forwardEdgeSpeed, newForwardEdge.getSpeedRaw());
         assertEquals(forwardEdgeName, newForwardEdge.getName());
 
         //Edge from C to B
         EdgeStore.Edge newBackwardEdge = streetLayer.edgeStore.getCursor(3);
         assertEquals(backwardEdgeFlags, newBackwardEdge.getFlags());
-        assertEquals(backwardEdgeSpeed, newBackwardEdge.getSpeed());
+        assertEquals(backwardEdgeSpeed, newBackwardEdge.getSpeedRaw());
         assertEquals(backwardEdgeName, newBackwardEdge.getName());
 
         //streetLayer.edgeStore.dump();

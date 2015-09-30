@@ -314,8 +314,12 @@ public class EdgeStore implements Serializable {
             flags.set(edgeIndex, flags.get(edgeIndex) | flag.flag);
         }
 
-        public int getSpeed() {
+        public int getSpeedRaw() {
             return speeds.get(edgeIndex);
+        }
+
+        public double getSpeed() {
+            return getSpeedRaw() / VertexStore.FIXED_FACTOR;
         }
 
         public void setSpeed(int speed) {
@@ -373,6 +377,12 @@ public class EdgeStore implements Serializable {
             return doTraverse(s0, options, s0.getNonTransitMode());
         }
 
+        private double getSlopeSpeedEffectiveLength() {
+            return getLengthM();
+        }
+
+
+
         private StreetRouter.State doTraverse(StreetRouter.State s0, TransportNetworkRequest options,
             TraverseMode traverseMode) {
             TraverseMode backMode = s0.getBackMode();
@@ -390,11 +400,38 @@ public class EdgeStore implements Serializable {
             s1.backEdge = edgeIndex;
             s1.backState = s0;
             s1.nextState = null;
-            s1.weight = s0.weight + getLengthMm() / 1000;
             double speedms = calculateSpeed(options, traverseMode, s0.getTime());
             double length = getLengthM();
-            int time = (int) Math.ceil(length / speedms);
-            s1.incrementTimeInSeconds(time);
+            double time = length / speedms;
+            double weight;
+            if (options.wheelchairAccessible) {
+                weight = getSlopeSpeedEffectiveLength() / speedms;
+            } else if (traverseMode.equals(TraverseMode.BICYCLE)) {
+                time = getSlopeSpeedEffectiveLength() / speedms;
+                //TODO: bicycle optimizations
+                weight = length / speedms;
+            } else {
+                //TODO: walking bike
+                weight = time;
+                if (traverseMode.equals(TraverseMode.WALK)) {
+                    //costs based on elevation
+                    //updates weight
+                    //time=weight
+                }
+            }
+            if (getFlag(Flag.STAIRS)) {
+                weight *= options.stairsReluctance;
+            } else if (traverseMode.equals(TraverseMode.WALK)) {
+                //This was previously else and applied to biking and driving also
+                weight *= options.walkReluctance;
+            }
+
+            //turn costs
+
+            //P+R soft walk limit etc.
+            int roundedTime = (int) Math.ceil(time);
+            s1.incrementTimeInSeconds(roundedTime);
+            s1.incrementWeight(weight);
             s1.incrementNonTransitDistance(length);
             s1.setBackMode(traverseMode);
             return s1;
@@ -418,7 +455,7 @@ public class EdgeStore implements Serializable {
                 /*if (options.useTraffic) {
                     //TODO: speed based on traffic information
                 }*/
-                return getSpeed() / VertexStore.FIXED_FACTOR;
+                return getSpeed();
             }
             return options.getSpeed(traverseMode);
         }
@@ -563,7 +600,7 @@ public class EdgeStore implements Serializable {
             }
             sb.append(String.format("%s Edge (osm:%d|%d) from %d to %d. Length %f meters, speed %f kph.",
                 direction, getOSMID(), edgeIndex, getFromVertex(), getToVertex(), getLengthM(),
-                (getSpeed() / VertexStore.FIXED_FACTOR)*3.6));
+                getSpeed()*3.6));
             for (Flag flag : Flag.values()) {
                 if (getFlag(flag)) {
                     sb.append(" ");

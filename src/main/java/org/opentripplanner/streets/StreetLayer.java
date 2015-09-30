@@ -390,15 +390,15 @@ public class StreetLayer implements Serializable {
         int forwardFlags, backwardFlags;
 
         if (edge.isBackward()) {
-            backwardSpeed = edge.getSpeed();
+            backwardSpeed = edge.getSpeedRaw();
             EdgeStore.Edge reverseEdge = edgeStore.getCursor(split.edge-1);
-            forwardSpeed = reverseEdge.getSpeed();
+            forwardSpeed = reverseEdge.getSpeedRaw();
             backwardFlags = edge.getFlags();
             forwardFlags = reverseEdge.getFlags();
         } else {
-            forwardSpeed = edge.getSpeed();
+            forwardSpeed = edge.getSpeedRaw();
             EdgeStore.Edge reverseEdge = edgeStore.getCursor(split.edge+1);
-            backwardSpeed = reverseEdge.getSpeed();
+            backwardSpeed = reverseEdge.getSpeedRaw();
             forwardFlags = edge.getFlags();
             backwardFlags = reverseEdge.getFlags();
         }
