@@ -391,13 +391,36 @@ public class EdgeStore implements Serializable {
             s1.backState = s0;
             s1.nextState = null;
             s1.weight = s0.weight + getLengthMm() / 1000;
-            double speedms = getSpeed() / VertexStore.FIXED_FACTOR;
+            double speedms = calculateSpeed(options, traverseMode, s0.getTime());
             double length = getLengthM();
             int time = (int) Math.ceil(length / speedms);
             s1.incrementTimeInSeconds(time);
             s1.incrementNonTransitDistance(length);
             s1.setBackMode(traverseMode);
             return s1;
+        }
+
+        /**
+         * Calculate the speed appropriately given the RoutingRequest and traverseMode and the current wall clock time.
+         * Note: this is not strictly symmetrical, because in a forward search we get the speed based on the
+         * time we enter this edge, whereas in a reverse search we get the speed based on the time we exit
+         * the edge.
+         *
+         * If driving speed is based on max edge speed. (or from traffic if traffic is supported)
+         *
+         * Otherwise speed is based on default walking, cycling speed.
+         */
+        private double calculateSpeed(TransportNetworkRequest options, TraverseMode traverseMode,
+            Instant time) {
+            if (traverseMode == null) {
+                return Double.NaN;
+            } else if (traverseMode.isDriving()) {
+                /*if (options.useTraffic) {
+                    //TODO: speed based on traffic information
+                }*/
+                return getSpeed() / VertexStore.FIXED_FACTOR;
+            }
+            return options.getSpeed(traverseMode);
         }
 
         public void setGeometry (List<Node> nodes) {
