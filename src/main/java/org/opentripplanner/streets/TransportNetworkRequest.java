@@ -7,10 +7,7 @@ import org.opentripplanner.util.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -39,6 +36,7 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
      */
     public TransportNetworkRequest() {
         super();
+        zonedDateTime = ZonedDateTime.now(Clock.systemUTC());
         bikeWalkingOptions = this;
     }
 
