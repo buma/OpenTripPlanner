@@ -208,7 +208,6 @@ public class EdgeStore implements Serializable {
         osmids.add(osmID);
 
         if (name != null) {
-            //name = name.intern();
             osmids_names.put(osmID, name);
         }
 

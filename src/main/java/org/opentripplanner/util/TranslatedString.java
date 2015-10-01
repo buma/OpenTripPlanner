@@ -25,9 +25,9 @@ public class TranslatedString implements I18NString, Serializable {
     private TranslatedString(Map<String, String> translations) {
         for (Map.Entry<String, String> i : translations.entrySet()) {
             if (i.getKey() == null){
-                this.translations.put(null, i.getValue());
+                this.translations.put(null, i.getValue().intern());
             } else {
-                this.translations.put(i.getKey().toLowerCase(), i.getValue());
+                this.translations.put(i.getKey().toLowerCase().intern(), i.getValue().intern());
             }
         }
     }

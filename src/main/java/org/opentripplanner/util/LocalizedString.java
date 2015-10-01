@@ -76,7 +76,7 @@ public class LocalizedString implements I18NString, Serializable {
      * @param way OSM way from which tag values are read
      */
     public LocalizedString(String key, IOSMWithTags way) {
-        this.key = key;
+        this.key = key.intern();
         List<String> lparams = new ArrayList<String>(4);
         //Which tags do we want from way
         List<String> tag_names = getTagNames();
@@ -84,7 +84,7 @@ public class LocalizedString implements I18NString, Serializable {
             for(String tag_name: tag_names) {
                 String param = way.getTag(tag_name);
                 if (param != null) {
-                    lparams.add(param);
+                    lparams.add(param.intern());
                 } else {
                     lparams.add("");
                 }

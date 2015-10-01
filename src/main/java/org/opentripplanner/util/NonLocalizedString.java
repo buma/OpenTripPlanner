@@ -27,7 +27,7 @@ public class NonLocalizedString implements I18NString, Serializable {
     private String name;
 
     public NonLocalizedString(String name) {
-        this.name = name;
+        this.name = name.intern();
     }
 
     @Override
