@@ -14,8 +14,13 @@
 package org.opentripplanner.openstreetmap.model;
 
 import com.conveyal.osmlib.OSMEntity;
+import org.opentripplanner.graph_builder.module.osm.TemplateLibrary;
+import org.opentripplanner.util.I18NString;
+import org.opentripplanner.util.NonLocalizedString;
+import org.opentripplanner.util.TranslatedString;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -222,4 +227,47 @@ public interface IOSMWithTags {
     }
 
     Collection<OSMEntity.Tag> getPermissionTags();
+
+    default Map<String, String> getTagsByPrefix(String prefix) {
+        Map<String, String> out = new HashMap<String, String>();
+        for (Map.Entry<String, String> entry : getTags().entrySet()) {
+            String k = entry.getKey();
+            if (k.equals(prefix) || k.startsWith(prefix + ":")) {
+                out.put(k, entry.getValue());
+            }
+        }
+
+        if (out.isEmpty())
+            return null;
+        return out;
+    }
+
+    boolean hasCreativeName();
+
+    /**
+     * Returns a name-like value for an entity (if one exists). The otp: namespaced tags are created by
+     * {@link org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule#processRelations processRelations}
+     */
+    default I18NString getAssumedName() {
+        if (hasTag("name"))
+            return TranslatedString.getI18NString(TemplateLibrary.generateI18N("{name}", this));
+
+        if (hasTag("otp:route_name"))
+            return new NonLocalizedString(getTag("otp:route_name"));
+
+        if (hasCreativeName())
+            return getCreativeName();
+
+        if (hasTag("otp:route_ref"))
+            return new NonLocalizedString(getTag("otp:route_ref"));
+
+        if (hasTag("ref"))
+            return new NonLocalizedString(getTag("ref"));
+
+        return null;
+    }
+
+    I18NString getCreativeName();
+    void setCreativeName(I18NString creativeName);
+
 }

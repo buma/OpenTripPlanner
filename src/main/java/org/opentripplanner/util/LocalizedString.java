@@ -22,7 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.opentripplanner.openstreetmap.model.OSMWithTags;
+
+import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 
 /**
  * This is used to localize strings for which localization are known beforehand.
@@ -74,7 +75,7 @@ public class LocalizedString implements I18NString, Serializable {
      * @param key key of translation for this way set in {@link DefaultWayPropertySetSource} and translations read from from properties Files
      * @param way OSM way from which tag values are read
      */
-    public LocalizedString(String key, OSMWithTags way) {
+    public LocalizedString(String key, IOSMWithTags way) {
         this.key = key;
         List<String> lparams = new ArrayList<String>(4);
         //Which tags do we want from way

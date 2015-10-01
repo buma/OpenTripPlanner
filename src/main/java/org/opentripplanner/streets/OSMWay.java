@@ -15,6 +15,7 @@ package org.opentripplanner.streets;
 
 import com.conveyal.osmlib.Way;
 import org.opentripplanner.openstreetmap.model.IOSMWay;
+import org.opentripplanner.util.I18NString;
 
 import java.util.Arrays;
 
@@ -23,6 +24,7 @@ import java.util.Arrays;
  */
 public class OSMWay extends OSMEntityWithTags implements IOSMWay {
     public long[] nodes;
+    private I18NString creativeName = null;
 
     public OSMWay(Way way) {
         super(way);
@@ -50,4 +52,18 @@ public class OSMWay extends OSMEntityWithTags implements IOSMWay {
         return Arrays.equals(this.nodes, otherWay.nodes) && this.tagsEqual(otherWay);
     }
 
+    @Override
+    public boolean hasCreativeName() {
+        return this.creativeName != null;
+    }
+
+    @Override
+    public I18NString getCreativeName() {
+        return this.creativeName;
+    }
+
+    @Override
+    public void setCreativeName(I18NString creativeName) {
+        this.creativeName = creativeName;
+    }
 }

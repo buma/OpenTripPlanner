@@ -17,16 +17,16 @@ import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.streets.permissions.OSMAccessPermissions;
 import org.opentripplanner.streets.permissions.TransportModeType;
+import org.opentripplanner.util.I18NString;
+import org.opentripplanner.util.NonLocalizedString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
+import java.time.Instant;
+import java.util.*;
 
 /**
  * Column store is better than struct simulation because 1. it is less fancy, 2. it is auto-resizing (not fixed size),
@@ -81,7 +81,7 @@ public class EdgeStore implements Serializable {
     - size with names in List<String>: 63671592
     - size with osm_ids names 62059823 (Without removal of unused names)
     - size with removal of unused names 62011819*/
-    protected TLongObjectHashMap<String> osmids_names;
+    protected TLongObjectHashMap<I18NString> osmids_names;
 
     /** Geometries. One entry for each edge pair */
     protected List<int[]> geometries; // intermediate points along the edge, other than the intersection endpoints
@@ -197,7 +197,7 @@ public class EdgeStore implements Serializable {
      * @return a cursor pointing to the forward edge in the pair, which always has an even index.
      */
     public Edge addStreetPair(int beginVertexIndex, int endVertexIndex, int edgeLengthMillimeters,
-        long osmID, String name, int streetMaxSpeedForward, int streetMaxSpeedBackward,
+        long osmID, I18NString name, int streetMaxSpeedForward, int streetMaxSpeedBackward,
         int flagsForward, int flagsBackward) {
 
         // Store only one length, set of endpoints, and intermediate geometry per pair of edges.
@@ -208,7 +208,7 @@ public class EdgeStore implements Serializable {
         osmids.add(osmID);
 
         if (name != null) {
-            name = name.intern();
+            //name = name.intern();
             osmids_names.put(osmID, name);
         }
 
@@ -649,23 +649,33 @@ public class EdgeStore implements Serializable {
             return osmids.get(pairIndex);
         }
 
-        @Nullable
+        @Nonnull
         public String getName() {
+            I18NString name = getNameRaw();
+            if (name == null) {
+                return EMPTY_NAME;
+            } else {
+                return name.toString();
+            }
+        }
+
+        @Nullable
+        public I18NString getNameRaw() {
             return osmids_names.get(getOSMID());
         }
 
         @Nonnull
         public String getName(Locale requestedLocale) {
-            String name = getName();
+            I18NString name = getNameRaw();
             if (name == null) {
                 return EMPTY_NAME;
             } else {
-                return name;
+                return name.toString(requestedLocale);
             }
         }
 
         public boolean hasBogusName() {
-            return getFlag(Flag.BOGUS_NAME) || getName() == null;
+            return getFlag(Flag.BOGUS_NAME) || getNameRaw() == null;
         }
 
         public StreetTraversalPermission getPermissions() {

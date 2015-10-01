@@ -14,6 +14,7 @@
 package org.opentripplanner.routing.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.opentripplanner.graph_builder.module.osm.CreativeNamer;
 import org.opentripplanner.graph_builder.module.osm.OSMSpecifier;
 import org.opentripplanner.graph_builder.module.osm.SpeedPicker;
 import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
@@ -79,6 +80,8 @@ public class SpeedsFactory {
 
         props.defaultSpeed = 11.2f; // ~= 25 mph ~= 40 km/h
 
+        addNamers();
+
         final PortlandPermissionsSetSource portlandPermissionsSetSource = new PortlandPermissionsSetSource(props);
         props = portlandPermissionsSetSource.getWayPropertySet();
         tree = portlandPermissionsSetSource.getTransportModeHierarchyTree();
@@ -97,6 +100,9 @@ public class SpeedsFactory {
     public SpeedsFactory(WayPropertySet propertySet, UnitConverter unitConverter, String unit) {
         final PortlandPermissionsSetSource portlandPermissionsSetSource = new PortlandPermissionsSetSource(propertySet);
         this.props = portlandPermissionsSetSource.getWayPropertySet();
+
+        addNamers();
+
         this.tree = portlandPermissionsSetSource.getTransportModeHierarchyTree();
         this.toUnit = unitConverter;
         this.unit = unit;
@@ -231,5 +237,81 @@ public class SpeedsFactory {
 
     public TransportModeTreeItem getTree() {
         return tree;
+    }
+
+    private void addNamers() {
+
+        /* and some names */
+        // Basics
+        createNames(props, "highway=cycleway", "name.bike_path");
+        createNames(props, "cycleway=track", "name.bike_path");
+        createNames(props, "highway=pedestrian", "name.pedestrian_path");
+        createNames(props, "highway=pedestrian;area=yes", "name.pedestrian_area");
+        createNames(props, "highway=path", "name.path");
+        createNames(props, "highway=footway", "name.pedestrian_path");
+        createNames(props, "highway=bridleway", "name.bridleway");
+        createNames(props, "highway=footway;bicycle=no", "name.pedestrian_path");
+
+        // Platforms
+        createNames(props, "otp:route_ref=*", "name.otp_route_ref");
+        createNames(props, "highway=platform;ref=*", "name.platform_ref");
+        createNames(props, "railway=platform;ref=*", "name.platform_ref");
+        createNames(props, "railway=platform;highway=footway;footway=sidewalk", "name.platform");
+        createNames(props, "railway=platform;highway=path;path=sidewalk", "name.platform");
+        createNames(props, "railway=platform;highway=pedestrian", "name.platform");
+        createNames(props, "railway=platform;highway=path", "name.platform");
+        createNames(props, "railway=platform;highway=footway", "name.platform");
+        createNames(props, "highway=platform", "name.platform");
+        createNames(props, "railway=platform", "name.platform");
+        createNames(props, "railway=platform;highway=footway;bicycle=no", "name.platform");
+
+        // Bridges/Tunnels
+        createNames(props, "highway=pedestrian;bridge=*", "name.footbridge");
+        createNames(props, "highway=path;bridge=*", "name.footbridge");
+        createNames(props, "highway=footway;bridge=*", "name.footbridge");
+
+        createNames(props, "highway=pedestrian;tunnel=*", "name.underpass");
+        createNames(props, "highway=path;tunnel=*", "name.underpass");
+        createNames(props, "highway=footway;tunnel=*", "name.underpass");
+
+        // Basic Mappings
+        createNames(props, "highway=motorway", "name.road");
+        createNames(props, "highway=motorway_link", "name.ramp");
+        createNames(props, "highway=trunk", "name.road");
+        createNames(props, "highway=trunk_link", "name.ramp");
+
+        createNames(props, "highway=primary", "name.road");
+        createNames(props, "highway=primary_link", "name.link");
+        createNames(props, "highway=secondary", "name.road");
+        createNames(props, "highway=secondary_link", "name.link");
+        createNames(props, "highway=tertiary", "name.road");
+        createNames(props, "highway=tertiary_link", "name.link");
+        createNames(props, "highway=unclassified", "name.road");
+        createNames(props, "highway=residential", "name.road");
+        createNames(props, "highway=living_street", "name.road");
+        createNames(props, "highway=road", "name.road");
+        createNames(props, "highway=service", "name.service_road");
+        createNames(props, "highway=service;service=alley", "name.alley");
+        createNames(props, "highway=service;service=parking_aisle", "name.parking_aisle");
+        createNames(props, "highway=byway", "name.byway");
+        createNames(props, "highway=track", "name.track");
+
+        createNames(props, "highway=footway;footway=sidewalk", "name.sidewalk");
+        createNames(props, "highway=path;path=sidewalk", "name.sidewalk");
+
+        createNames(props, "highway=steps", "name.steps");
+
+        createNames(props, "amenity=bicycle_parking;name=*", "name.bicycle_parking_name");
+        createNames(props, "amenity=bicycle_parking", "name.bicycle_parking");
+
+        createNames(props, "amenity=parking;name=*", "name.park_and_ride_name");
+        createNames(props, "amenity=parking", "name.park_and_ride_station");
+    }
+
+
+    private void createNames(WayPropertySet propset, String spec, String patternKey) {
+        String pattern = patternKey;
+        CreativeNamer namer = new CreativeNamer(pattern);
+        propset.addCreativeNamer(new OSMSpecifier(spec), namer);
     }
 }

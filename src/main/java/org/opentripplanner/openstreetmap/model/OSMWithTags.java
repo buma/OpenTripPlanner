@@ -159,44 +159,18 @@ public class OSMWithTags implements IOSMWithTags {
         return false;
     }
 
-    /**
-     * Returns a name-like value for an entity (if one exists). The otp: namespaced tags are created by
-     * {@link org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule#processRelations processRelations}
-     */
-    public I18NString getAssumedName() {
-        if (_tags.containsKey("name"))
-            return TranslatedString.getI18NString(TemplateLibrary.generateI18N("{name}", this));
-
-        if (_tags.containsKey("otp:route_name"))
-            return new NonLocalizedString(_tags.get("otp:route_name"));
-
-        if (this.creativeName != null)
-            return this.creativeName;
-
-        if (_tags.containsKey("otp:route_ref"))
-            return new NonLocalizedString(_tags.get("otp:route_ref"));
-
-        if (_tags.containsKey("ref"))
-            return new NonLocalizedString(_tags.get("ref"));
-
-        return null;
-    }
-
-    public Map<String, String> getTagsByPrefix(String prefix) {
-        Map<String, String> out = new HashMap<String, String>();
-        for (Map.Entry<String, String> entry : _tags.entrySet()) {
-            String k = entry.getKey();
-            if (k.equals(prefix) || k.startsWith(prefix + ":")) {
-                out.put(k, entry.getValue());
-            }
-        }
-
-        if (out.isEmpty())
-            return null;
-        return out;
-    }
 
     public void setCreativeName(I18NString creativeName) {
         this.creativeName = creativeName;
+    }
+
+    @Override
+    public boolean hasCreativeName() {
+        return this.creativeName != null;
+    }
+
+    @Override
+    public I18NString getCreativeName() {
+        return this.creativeName;
     }
 }

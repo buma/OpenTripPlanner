@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.opentripplanner.openstreetmap.model.IOSMWithTags;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
 
 public class TemplateLibrary {
@@ -59,7 +60,7 @@ public class TemplateLibrary {
      * @return A map language code -> text, with at least one entry for the default language, and
      *         any other language found in OSM tag.
      */
-    public static Map<String, String> generateI18N(String pattern, OSMWithTags way) {
+    public static Map<String, String> generateI18N(String pattern, IOSMWithTags way) {
 
         if (pattern == null)
             return null;

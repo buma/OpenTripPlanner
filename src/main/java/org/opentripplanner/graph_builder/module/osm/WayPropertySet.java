@@ -175,7 +175,7 @@ public class WayPropertySet {
         result.setSafetyFeatures(new P2<Double>(first, second));
     }
 
-    public I18NString getCreativeNameForWay(OSMWithTags way) {
+    public I18NString getCreativeNameForWay(IOSMWithTags way) {
         CreativeNamer bestNamer = null;
         int bestScore = 0;
         for (CreativeNamerPicker picker : creativeNamers) {
