@@ -374,7 +374,19 @@ public class EdgeStore implements Serializable {
         public StreetRouter.State traverse (StreetRouter.State s0) {
             final TransportNetworkRequest options = s0.getOptions();
             final TraverseMode currMode = s0.getNonTransitMode();
-            return doTraverse(s0, options, s0.getNonTransitMode());
+            //This is used in graph pruning
+            //Basically it tries to route with any non transit mode possible,
+            // because it doesn't matter which mode can traverse but that at least one can
+            if (options.isSwitchMode()) {
+                //If car isn't allowed we try BIKE because if only walking is allowed we will try walking in doTraverse anyway
+                if (!canTraverse(options, TraverseMode.CAR)) {
+                    return doTraverse(s0, options, TraverseMode.BICYCLE);
+                } else {
+                    return doTraverse(s0, options, TraverseMode.CAR);
+                }
+            } else {
+                return doTraverse(s0, options, s0.getNonTransitMode());
+            }
         }
 
         private double getSlopeSpeedEffectiveLength() {

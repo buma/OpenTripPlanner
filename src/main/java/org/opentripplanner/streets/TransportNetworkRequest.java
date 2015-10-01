@@ -31,6 +31,10 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
 
     private ZonedDateTime zonedDateTime;
 
+    /** If true when routing all the modes are tested and first which is allowed to traverse is used
+     * This is used when pruning graph **/
+    private boolean switchMode = false;
+
     /**
      * Constructor for options; modes defaults to walk and transit
      */
@@ -147,5 +151,13 @@ public class TransportNetworkRequest  extends RoutingRequest implements Cloneabl
 
     public ZonedDateTime getZonedDateTime() {
         return zonedDateTime;
+    }
+
+    public void setSwitchMode(boolean switchMode) {
+        this.switchMode = switchMode;
+    }
+
+    public boolean isSwitchMode() {
+        return switchMode;
     }
 }

@@ -480,8 +480,9 @@ public class StreetLayer implements Serializable {
         transportNetwork.streetLayer = this;
 
         TransportNetworkRequest transportNetworkRequest = new TransportNetworkRequest(new TraverseModeSet(
-            TraverseMode.WALK));
+            TraverseMode.WALK, TraverseMode.BICYCLE, TraverseMode.CAR));
         transportNetworkRequest.setTimeIndependantSearch(true);
+        transportNetworkRequest.setSwitchMode(true);
         transportNetworkRequest.setDummyRoutingContext(transportNetwork);
 
 
