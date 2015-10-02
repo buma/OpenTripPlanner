@@ -14,6 +14,7 @@ import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
+import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import org.joda.time.LocalDate;
 import org.opentripplanner.routing.core.TraverseMode;
@@ -51,6 +52,8 @@ public class TransitLayer implements Serializable {
     public List<TIntList> transfersForStop;
 
     public List<TIntList> patternsForStop;
+
+    public TIntObjectHashMap<String> namesForStop;
 
     public List<Service> services = new ArrayList<>();
 
@@ -152,11 +155,13 @@ public class TransitLayer implements Serializable {
         // Load stops.
         // ID is the GTFS string ID, stopIndex is the zero-based index, stopVertexIndex is the index in the street layer.
         TObjectIntMap<String> indexForStopId = new TObjectIntHashMap<>();
+        namesForStop = new TIntObjectHashMap<String>(gtfs.stops.size());
         for (Stop stop : gtfs.stops.values()) {
             int stopIndex = stopIdForIndex.size();
             indexForStopId.put(stop.stop_id, stopIndex);
             stopIdForIndex.add(stop.stop_id);
             stopForIndex.add(stop);
+            namesForStop.put(stopIndex, stop.stop_name);
         }
 
         // Load service periods, assigning integer codes which will be referenced by trips and patterns.
