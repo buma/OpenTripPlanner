@@ -1,35 +1,23 @@
-/* This program is free software: you can redistribute it and/or
- modify it under the terms of the GNU Lesser General Public License
- as published by the Free Software Foundation, either version 3 of
- the License, or (at your option) any later version.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>. */
-
-package org.opentripplanner.inspector;
-
-import java.awt.Graphics2D;
-
-import org.opentripplanner.routing.graph.Graph;
+package org.opentripplanner.inspector.networks;
 
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
+import org.opentripplanner.inspector.InspectorLayerName;
+import org.opentripplanner.streets.VertexStore;
+import org.opentripplanner.transit.TransportNetwork;
+
+import java.awt.*;
 
 /**
  * Interface for a slippy map tile renderer.
- * 
+ *
  * @author laurent
  */
 public interface TileRenderer extends InspectorLayerName {
 
     /**
      * Context used for rendering a tile.
-     * 
+     *
      */
     public abstract class TileRenderContext {
 
@@ -40,7 +28,7 @@ public interface TileRenderer extends InspectorLayerName {
         public AffineTransformation transform;
 
         /** The graph being processed */
-        public Graph graph;
+        public TransportNetwork transportNetwork;
 
         /** Bounding box of the rendered tile in WGS84 CRS, w/o margins */
         public Envelope bbox;
@@ -53,6 +41,21 @@ public interface TileRenderer extends InspectorLayerName {
 
         /** Expand the bounding box to add some margins, in pixel size. */
         public abstract Envelope expandPixels(double marginXPixels, double marginYPixels);
+
+        /**
+         * Changes envelope coordinates to fixed coordinates (integer latitude and longitude)
+         *
+         * This is used in VertexStore
+         * @param envelope
+         * @return
+         */
+        public static Envelope toFixedEnvelope(Envelope envelope) {
+            Envelope fixedEnvelope = new Envelope(
+                VertexStore.floatingDegreesToFixed(envelope.getMinX()),
+                VertexStore.floatingDegreesToFixed(envelope.getMaxX()), VertexStore.floatingDegreesToFixed(envelope.getMinY()),
+                VertexStore.floatingDegreesToFixed(envelope.getMaxY()));
+            return fixedEnvelope;
+        }
     }
 
     /** Return the BufferedImage color model the renderer would like to use */
@@ -60,7 +63,5 @@ public interface TileRenderer extends InspectorLayerName {
 
     /** Implementation of the tile rendering */
     public abstract void renderTile(TileRenderContext context);
-
-
 
 }

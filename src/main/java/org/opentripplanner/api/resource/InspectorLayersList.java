@@ -21,6 +21,8 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlElements;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import org.opentripplanner.inspector.InspectorLayerName;
 import org.opentripplanner.inspector.TileRenderer;
 
 /**
@@ -33,14 +35,32 @@ public class InspectorLayersList {
     @XmlElements(value = {@XmlElement(name="layer") })
     public List<InspectorLayer> layers;
 
-    InspectorLayersList(Map<String, TileRenderer> renderers) {
+    public InspectorLayersList(Map<String, TileRenderer> renderers) {
         layers = new ArrayList<>(renderers.size());
         for (Map.Entry<String, TileRenderer> layerInfo : renderers.entrySet()) {
             String layer_key = layerInfo.getKey();
-            TileRenderer layer = layerInfo.getValue();
+            InspectorLayerName layer = layerInfo.getValue();
             layers.add(new InspectorLayer(layer_key, layer.getName()));
         }
     }
+
+    private InspectorLayersList() {
+
+    }
+
+    //This must be static since if it is constructor it has same type erasure as the previous constructor
+    public static InspectorLayersList fromNetworksTileRenderer(Map<String, org.opentripplanner.inspector.networks.TileRenderer> renderers) {
+        InspectorLayersList inspectorLayersList = new InspectorLayersList();
+        inspectorLayersList.layers = new ArrayList<>(renderers.size());
+        for (Map.Entry<String, org.opentripplanner.inspector.networks.TileRenderer> layerInfo : renderers.entrySet()) {
+            String layer_key = layerInfo.getKey();
+            InspectorLayerName layer = layerInfo.getValue();
+            inspectorLayersList.layers.add(new InspectorLayer(layer_key, layer.getName()));
+        }
+        return inspectorLayersList;
+    }
+
+
 
     private static class InspectorLayer {
         

@@ -14,6 +14,7 @@
 package org.opentripplanner.streets;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.opentripplanner.inspector.networks.TileRendererManager;
 import org.opentripplanner.reflect.ReflectiveInitializer;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.transit.TransportNetwork;
@@ -33,6 +34,8 @@ public class Router {
     public final TransportNetwork transportNetwork;
     public double[] timeouts = {5, 2, 1, 0.5, 0.1};
 
+    public TileRendererManager tileRendererManager;
+
     // A RoutingRequest containing default parameters that will be cloned when handling each request
     public TransportNetworkRequest defaultRoutingRequest;
 
@@ -42,6 +45,7 @@ public class Router {
 
         //FIXME: temporary since startup isn't yet called
         this.defaultRoutingRequest = new TransportNetworkRequest();
+        this.tileRendererManager = new TileRendererManager(this.transportNetwork);
     }
 
     /**
@@ -49,6 +53,9 @@ public class Router {
      * @param config The configuration (loaded from Graph.properties for example).
      */
     public void startup(JsonNode config) {
+
+        this.tileRendererManager = new TileRendererManager(this.transportNetwork);
+
         /* Create the default router parameters from the JSON router config. */
         JsonNode routingDefaultsNode = config.get("routingDefaults");
         if (routingDefaultsNode != null) {

@@ -1,5 +1,6 @@
 package org.opentripplanner.streets;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TIntArrayList;
@@ -140,6 +141,10 @@ public class VertexStore implements Serializable {
 
         public String getLabel() {
             return "osm:id:" + getOSMID();
+        }
+
+        public Coordinate getCoordinate() {
+            return new Coordinate(getLon(), getLat());
         }
     }
 
