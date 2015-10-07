@@ -13,22 +13,34 @@
 
 package org.opentripplanner.streets.permissions;
 
+import com.google.common.collect.Sets;
+
+import java.util.Set;
+
 /**
  * Created by mabu on 18.9.2015.
  */
 public class TransportModePermission {
     private TransportModeType transportModeType;
-    private OSMAccessPermissions osmAccessPermissions;
-    public TransportModePermission(TransportModeType motorcar, OSMAccessPermissions yes) {
+    private Set<OSMAccessPermissions> osmAccessPermissions;
+
+    private static final Set<OSMAccessPermissions> unknown = Sets.immutableEnumSet(OSMAccessPermissions.UNKNOWN);
+
+
+    public TransportModePermission(TransportModeType motorcar, Set<OSMAccessPermissions> yes) {
         this.transportModeType = motorcar;
         this.osmAccessPermissions = yes;
+    }
+
+    public TransportModePermission(TransportModeType transportModeType) {
+        this(transportModeType, unknown);
     }
 
     public TransportModeType getTransportModeType() {
         return transportModeType;
     }
 
-    public OSMAccessPermissions getOsmAccessPermissions() {
+    public Set<OSMAccessPermissions> getOsmAccessPermissions() {
         return osmAccessPermissions;
     }
 
@@ -36,12 +48,16 @@ public class TransportModePermission {
         this.transportModeType = transportModeType;
     }
 
-    public void setOsmAccessPermissions(OSMAccessPermissions osmAccessPermissions) {
-        this.osmAccessPermissions = osmAccessPermissions;
-    }
-
     @Override public String toString() {
         return "MODE:" + transportModeType +
             ", osmAccessPermissions=" + osmAccessPermissions;
+    }
+
+    public void setOsmAccessPermissions(Set<OSMAccessPermissions> osmAccessPermissions) {
+        this.osmAccessPermissions = osmAccessPermissions;
+    }
+
+    public void resetOsmAccessPermissions() {
+        this.osmAccessPermissions = unknown;
     }
 }

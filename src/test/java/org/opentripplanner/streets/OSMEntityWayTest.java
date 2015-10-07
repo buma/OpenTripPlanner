@@ -24,7 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -69,7 +71,7 @@ public class OSMEntityWayTest {
     }
 
     private StreetTraversalPermission calculateWayPermissions(IOSMWay way) {
-        EnumMap<TransportModeType, OSMAccessPermissions> mapPermissions = accessRestrictionsAlgorithm
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> mapPermissions = accessRestrictionsAlgorithm
         .calculateWayPermissions(way);
         return AccessRestrictionsAlgorithm.convertPermission(mapPermissions);
     }
@@ -77,9 +79,10 @@ public class OSMEntityWayTest {
     private P2<StreetTraversalPermission> calculateWayProperties(
         IOSMWay way
     ) {
-        P2<EnumMap<TransportModeType, OSMAccessPermissions>> permission = accessRestrictionsAlgorithm
+        P2<EnumMap<TransportModeType, Set<OSMAccessPermissions>>> permission = accessRestrictionsAlgorithm
             .getPermissions(way);
-        return new P2<StreetTraversalPermission>(AccessRestrictionsAlgorithm.convertPermission(permission.first), AccessRestrictionsAlgorithm.convertPermission(permission.second));
+        return new P2<>(AccessRestrictionsAlgorithm.convertPermission(permission.first),
+            AccessRestrictionsAlgorithm.convertPermission(permission.second));
     }
 
     /*private P2<StreetTraversalPermission> calculateWayPermissions(
@@ -93,7 +96,20 @@ public class OSMEntityWayTest {
         assertEquals(getWayPermissions(osmWay), calculateWayPermissions(osmWay));
 
         osmWay.addTag("access", "destination");
-        assertEquals(getWayPermissions(osmWay), calculateWayPermissions(osmWay));
+        P2<EnumMap<TransportModeType, Set<OSMAccessPermissions>>> permission = accessRestrictionsAlgorithm
+            .getPermissions(osmWay);
+        LOG.info("Way:{} Perm:{}", osmWay.getTags(), permission);
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> expected_permission = new EnumMap<>(
+            TransportModeType.class);
+        //Foot and bicycle permissions are from default cycleway permission
+        expected_permission.put(TransportModeType.FOOT, OSMAccessPermissions.yes);
+        expected_permission.put(TransportModeType.BICYCLE, OSMAccessPermissions.designated);
+        //CAR permissions are because access is destination
+        expected_permission.put(TransportModeType.MOTORCAR, EnumSet
+            .of(OSMAccessPermissions.NO_THRU_TRAFFIC, OSMAccessPermissions.DESTINATION,
+                OSMAccessPermissions.CAN_TRAVERSE));
+        assertEquals(expected_permission, permission.first);
+        assertEquals(expected_permission, permission.second);
 
     }
 
@@ -119,9 +135,21 @@ public class OSMEntityWayTest {
     @Test
     public void testPath() throws Exception {
         OSMWay osmWay = makeOSMWayFromTags("highway=path;access=private");
-        final P2<StreetTraversalPermission> wayProperties = getWayProperties(osmWay);
-        LOG.info("Path:{}", wayProperties);
-        assertEquals(wayProperties, calculateWayProperties(osmWay));
+
+        P2<EnumMap<TransportModeType, Set<OSMAccessPermissions>>> permission = accessRestrictionsAlgorithm
+            .getPermissions(osmWay);
+        LOG.info("Way:{} Perm:{}", osmWay.getTags(), permission);
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> expected_permission = new EnumMap<>(
+            TransportModeType.class);
+        //Foot and bicycle permissions are from default path permission
+        expected_permission.put(TransportModeType.FOOT, OSMAccessPermissions.yes);
+        expected_permission.put(TransportModeType.BICYCLE, OSMAccessPermissions.yes);
+        //CAR permissions are because access is private
+        expected_permission.put(TransportModeType.MOTORCAR, EnumSet
+            .of(OSMAccessPermissions.NO_THRU_TRAFFIC, OSMAccessPermissions.PRIVATE,
+                OSMAccessPermissions.CAN_TRAVERSE));
+        assertEquals(expected_permission, permission.first);
+        assertEquals(expected_permission, permission.second);
     }
 
     @Test
@@ -130,6 +158,14 @@ public class OSMEntityWayTest {
         final P2<StreetTraversalPermission> wayProperties = getWayProperties(osmWay);
         LOG.info("Platform:{}", wayProperties);
         assertEquals(wayProperties, calculateWayProperties(osmWay));
+    }
+
+    @Test public void testPrivate() throws Exception {
+        OSMWay osmWay = makeOSMWayFromTags("highway=residential;access=private;surface=asphalt");
+        final P2<StreetTraversalPermission> wayProperties = getWayProperties(osmWay);
+        LOG.info("Private:{}", wayProperties);
+        assertEquals(wayProperties, calculateWayProperties(osmWay));
+
     }
 
     @Test

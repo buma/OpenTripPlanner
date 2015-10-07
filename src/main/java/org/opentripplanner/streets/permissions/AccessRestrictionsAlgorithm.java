@@ -67,15 +67,16 @@ public class AccessRestrictionsAlgorithm {
         TransportModeTreeItem root = (TransportModeTreeItem) transportModeHierarchy.getRoot();
         for (Enumeration bfsTree = root.breadthFirstEnumeration(); bfsTree.hasMoreElements();) {
             TransportModeTreeItem currentLeaf = (TransportModeTreeItem) bfsTree.nextElement();
-            currentLeaf.setPermission(OSMAccessPermissions.UNKNOWN);
+            currentLeaf.resetPermission();
         }
     }
 
-    public EnumMap<TransportModeType, OSMAccessPermissions> calculateWayPermissions(IOSMWay way) {
+    public EnumMap<TransportModeType, Set<OSMAccessPermissions>> calculateWayPermissions(
+        IOSMWay way) {
         reset();
 
         WayProperties wayData = wayPropertySet.getDataForWay(way);
-        EnumMap<TransportModeType, OSMAccessPermissions> nonInheritedPermissions;
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> nonInheritedPermissions;
         if (wayData == null) {
             LOG.warn("No waydata for road:{}", way.getTags());
             nonInheritedPermissions = defaultTransportModePermissions.getNonInheritedPermissions();
@@ -94,7 +95,7 @@ public class AccessRestrictionsAlgorithm {
         //we label access as Unknown which is default
         TransportModeTreeItem root = (TransportModeTreeItem) tree.getRoot();
         //LOG.info("ROOT: {}", root);
-        root.setPermission(OSMAccessPermissions.UNKNOWN);
+        root.resetPermission();
 
         EnumMap<TransportModeType, TransportModeTreeItem> usefulTransportModes = new EnumMap<>(
             TransportModeType.class);
@@ -102,9 +103,9 @@ public class AccessRestrictionsAlgorithm {
         for (Enumeration bfsTree = root.breadthFirstEnumeration(); bfsTree.hasMoreElements();) {
             TransportModeTreeItem currentLeaf = (TransportModeTreeItem) bfsTree.nextElement();
             TransportModeType currentTransportMode = currentLeaf.getTransportModeType();
-            OSMAccessPermissions defaultHighwayTypePermission = nonInheritedPermissions.getOrDefault(currentTransportMode,
-                OSMAccessPermissions.UNKNOWN);
-            if (defaultHighwayTypePermission != OSMAccessPermissions.UNKNOWN) {
+             Set<OSMAccessPermissions> defaultHighwayTypePermission = nonInheritedPermissions.getOrDefault(currentTransportMode,
+                EnumSet.of(OSMAccessPermissions.UNKNOWN));
+            if (!defaultHighwayTypePermission.contains(OSMAccessPermissions.UNKNOWN)) {
                 currentLeaf.setPermission(defaultHighwayTypePermission);
             }
             //LOG.info("Depth: {} info:{}", currentLeaf.getDepth(), currentLeaf);
@@ -118,17 +119,17 @@ public class AccessRestrictionsAlgorithm {
         //TODO add changing of permissions for specific modes
 
         Collection<OSMEntity.Tag> permissionTags = way.getPermissionTags();
-        EnumMap<TransportModeType, OSMAccessPermissions> specificPermissions = new EnumMap<TransportModeType, OSMAccessPermissions>(TransportModeType.class);
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> specificPermissions = new EnumMap<>(TransportModeType.class);
         for (final OSMEntity.Tag tag : permissionTags) {
             //LOG.info("TAG:{}", tag);
             TransportModeType transportModeType = TransportModeType.valueOf(
                 tag.key.toUpperCase(Locale.ENGLISH));
             if (transportModeType == TransportModeType.BICYCLE && tag.value.toLowerCase().equals("use_sidepath")) {
-                specificPermissions.put(transportModeType, OSMAccessPermissions.NO);
+                specificPermissions.put(transportModeType, EnumSet.of(OSMAccessPermissions.NO, OSMAccessPermissions.CANNOT_TRAVERSE));
                 continue;
             }
             try {
-                OSMAccessPermissions osmAccessPermissions = OSMAccessPermissions.toPermission(
+                Set<OSMAccessPermissions> osmAccessPermissions = OSMAccessPermissions.toPermission(
                     tag.value.toLowerCase(Locale.ENGLISH));
                 specificPermissions.put(transportModeType, osmAccessPermissions);
                 //LOG.info("Added {} -> {}", transportModeType, osmAccessPermissions);
@@ -141,21 +142,21 @@ public class AccessRestrictionsAlgorithm {
         for (Enumeration bfsTree = root.breadthFirstEnumeration(); bfsTree.hasMoreElements();) {
             TransportModeTreeItem currentLeaf = (TransportModeTreeItem) bfsTree.nextElement();
             TransportModeType currentTransportMode = currentLeaf.getTransportModeType();
-            OSMAccessPermissions defaultHighwayTypePermission = specificPermissions.getOrDefault(currentTransportMode,
-                OSMAccessPermissions.UNKNOWN);
-            if (defaultHighwayTypePermission != OSMAccessPermissions.UNKNOWN) {
+            Set<OSMAccessPermissions> defaultHighwayTypePermission = specificPermissions.getOrDefault(currentTransportMode,
+                EnumSet.of(OSMAccessPermissions.UNKNOWN));
+            if (!defaultHighwayTypePermission.contains(OSMAccessPermissions.UNKNOWN)) {
                 currentLeaf.setPermission(defaultHighwayTypePermission);
             }
             //LOG.info("Depth: {} info:{}", currentLeaf.getDepth(), currentLeaf);
         }
 
-        EnumMap<TransportModeType, OSMAccessPermissions> permissionsMap = new EnumMap<>(
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> permissionsMap = new EnumMap<>(
             TransportModeType.class);
 
         //Getting permissions from the tree
         //We actually loose some information since we get information if mode is designated yes or dismount
         for (Map.Entry<TransportModeType, TransportModeTreeItem> map: usefulTransportModes.entrySet()) {
-            OSMAccessPermissions permissions = map.getValue().getFullPermission();
+            Set<OSMAccessPermissions> permissions = map.getValue().getFullPermission();
             //LOG.info("MODE:{} permission:{}", map.getKey(), permissions);
             permissionsMap.put(map.getKey(), permissions);
         }
@@ -164,36 +165,36 @@ public class AccessRestrictionsAlgorithm {
     }
 
     //TODO: it would be much smarted to do this when we still have a labeled tree
-    public P2<EnumMap<TransportModeType, OSMAccessPermissions>> getPermissions(IOSMWay way) {
-        EnumMap<TransportModeType, OSMAccessPermissions> permissions = calculateWayPermissions(way);
+    public P2<EnumMap<TransportModeType, Set<OSMAccessPermissions>>> getPermissions(IOSMWay way) {
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> permissions = calculateWayPermissions(way);
 
-        EnumMap<TransportModeType, OSMAccessPermissions> permissionsFront = new EnumMap<>(permissions);
-        EnumMap<TransportModeType, OSMAccessPermissions> permissionsBack = new EnumMap<>(permissions);
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> permissionsFront = new EnumMap<>(permissions);
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> permissionsBack = new EnumMap<>(permissions);
 
         if (way.isOneWayForwardDriving() || way.isRoundabout()) {
-            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
-            permissionsBack.replace(TransportModeType.MOTORCAR, OSMAccessPermissions.NO);
+            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.no);
+            permissionsBack.replace(TransportModeType.MOTORCAR, OSMAccessPermissions.no);
         }
 
         if (way.isOneWayReverseDriving()) {
-            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
-            permissionsFront.replace(TransportModeType.MOTORCAR, OSMAccessPermissions.NO);
+            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.no);
+            permissionsFront.replace(TransportModeType.MOTORCAR, OSMAccessPermissions.no);
         }
 
         if (way.isOneWayForwardBicycle()) {
-            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.no);
         }
 
         if (way.isOneWayReverseBicycle()) {
-            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.no);
         }
 
         // TODO(flamholz): figure out what this is for.
         String oneWayBicycle = way.getTag("oneway:bicycle");
         if (IOSMWithTags.isFalse(oneWayBicycle) || way.isTagTrue("bicycle:backwards")) {
-            if (permissions.get(TransportModeType.BICYCLE)==OSMAccessPermissions.YES) {
-                permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.YES);
-                permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.YES);
+            if (permissions.get(TransportModeType.BICYCLE).contains(OSMAccessPermissions.CAN_TRAVERSE)) {
+                permissionsFront.replace(TransportModeType.BICYCLE, permissions.get(TransportModeType.BICYCLE));
+                permissionsBack.replace(TransportModeType.BICYCLE, permissions.get(TransportModeType.BICYCLE));
             }
         }
 
@@ -201,21 +202,21 @@ public class AccessRestrictionsAlgorithm {
         //removes bicycle permission when bicycles need to use sidepath
         //TAG: bicycle:forward=use_sidepath
         if (way.isForwardDirectionSidepath()) {
-            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.no);
         }
 
         //TAG bicycle:backward=use_sidepath
         if (way.isReverseDirectionSidepath()) {
-            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.NO);
+            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.no);
         }
 
         if (way.isOpposableCycleway()) {
-            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.YES);
+            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.yes);
         }
 
         //TODO: sidewalk support
 
-        return new P2<EnumMap<TransportModeType, OSMAccessPermissions>>(permissionsFront, permissionsBack);
+        return new P2<EnumMap<TransportModeType, Set<OSMAccessPermissions>>>(permissionsFront, permissionsBack);
     }
 
 
@@ -226,21 +227,20 @@ public class AccessRestrictionsAlgorithm {
      * @return
      */
     public static StreetTraversalPermission convertPermission(
-        EnumMap<TransportModeType, OSMAccessPermissions> mapPermissions) {
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> mapPermissions) {
         StreetTraversalPermission permission = StreetTraversalPermission.NONE;
-        for (final Map.Entry<TransportModeType, OSMAccessPermissions> map : mapPermissions.entrySet()) {
-            OSMAccessPermissions permissions = map.getValue();
+        for (final Map.Entry<TransportModeType, Set<OSMAccessPermissions>> map : mapPermissions.entrySet()) {
+            Set<OSMAccessPermissions> permissions = map.getValue();
             if (map.getKey() == TransportModeType.FOOT) {
-                if (!(permissions == OSMAccessPermissions.NO || permissions == OSMAccessPermissions.PRIVATE)) {
+                if (permissions.contains(OSMAccessPermissions.CAN_TRAVERSE)) {
                     permission = permission.add(StreetTraversalPermission.PEDESTRIAN);
                 }
             } else if (map.getKey() == TransportModeType.BICYCLE) {
-                if (!(permissions == OSMAccessPermissions.NO || permissions == OSMAccessPermissions.PRIVATE ||
-                    permissions == OSMAccessPermissions.DISMOUNT)) {
+                if (permissions.contains(OSMAccessPermissions.CAN_TRAVERSE)) {
                     permission = permission.add(StreetTraversalPermission.BICYCLE);
                 }
             } else if (map.getKey() == TransportModeType.MOTORCAR) {
-                if (!(permissions == OSMAccessPermissions.NO || permissions == OSMAccessPermissions.PRIVATE)) {
+                if (permissions.contains(OSMAccessPermissions.CAN_TRAVERSE)) {
                     permission = permission.add(StreetTraversalPermission.CAR);
                 }
             }

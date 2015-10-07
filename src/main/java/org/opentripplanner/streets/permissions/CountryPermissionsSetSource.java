@@ -64,64 +64,35 @@ public class CountryPermissionsSetSource implements TransportModeHierarchyTree {
     public CountryPermissionsSetSource() {
         permissionsForRoadType = new HashMap<>(10);
         TransportModePermissions motorwayPermissions = new TransportModePermissions();
-        motorwayPermissions.add(TransportModeType.ACCESS, OSMAccessPermissions.DESIGNATED);
-        motorwayPermissions.add(
-            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV },
-            OSMAccessPermissions.INHERITED_DESIGNATED);
+        motorwayPermissions.add(TransportModeType.ACCESS, OSMAccessPermissions.designated);
         motorwayPermissions.add(
             new TransportModeType[] { TransportModeType.MOPED, TransportModeType.HORSE,
-                TransportModeType.BICYCLE, TransportModeType.FOOT }, OSMAccessPermissions.NO);
+                TransportModeType.BICYCLE, TransportModeType.FOOT }, OSMAccessPermissions.no);
 
         TransportModePermissions otherStreets = new TransportModePermissions();
-        otherStreets.add(TransportModeType.ACCESS, OSMAccessPermissions.YES);
-        otherStreets.add(
-            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED,
-                TransportModeType.HORSE, TransportModeType.BICYCLE, TransportModeType.FOOT },
-            OSMAccessPermissions.INHERITED_YES);
+        otherStreets.add(TransportModeType.ACCESS, OSMAccessPermissions.yes);
 
 
         TransportModePermissions pedestrian = new TransportModePermissions();
-        pedestrian.add(TransportModeType.ACCESS, OSMAccessPermissions.NO);
-        pedestrian.add(new TransportModeType[]{TransportModeType.MOTORCAR,
-                TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV,
-                TransportModeType.MOPED, TransportModeType.HORSE, TransportModeType.BICYCLE},
-            OSMAccessPermissions.INHERITED_NO);
-        pedestrian.add(TransportModeType.FOOT, OSMAccessPermissions.YES);
+        pedestrian.add(TransportModeType.ACCESS, OSMAccessPermissions.no);
+        pedestrian.add(TransportModeType.FOOT, OSMAccessPermissions.yes);
 
         TransportModePermissions path = new TransportModePermissions();
-        path.add(TransportModeType.ACCESS, OSMAccessPermissions.NO);
-        path.add(new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED, },
-            OSMAccessPermissions.INHERITED_NO);
+        path.add(TransportModeType.ACCESS, OSMAccessPermissions.no);
         path.add(new TransportModeType[] { TransportModeType.HORSE, TransportModeType.BICYCLE,
-            TransportModeType.FOOT }, OSMAccessPermissions.YES);
+            TransportModeType.FOOT }, OSMAccessPermissions.yes);
 
         TransportModePermissions bridleway = new TransportModePermissions();
-        bridleway.add(TransportModeType.ACCESS, OSMAccessPermissions.NO);
-        bridleway.add(
-            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED,
-                TransportModeType.BICYCLE, TransportModeType.FOOT },
-            OSMAccessPermissions.INHERITED_NO);
-        bridleway.add(TransportModeType.HORSE, OSMAccessPermissions.DESIGNATED);
+        bridleway.add(TransportModeType.ACCESS, OSMAccessPermissions.no);
+        bridleway.add(TransportModeType.HORSE, OSMAccessPermissions.designated);
 
         TransportModePermissions cycleway = new TransportModePermissions();
-        cycleway.add(TransportModeType.ACCESS, OSMAccessPermissions.NO);
-        cycleway.add(new TransportModeType[]{TransportModeType.MOTORCAR,
-            TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV,
-            TransportModeType.MOPED, TransportModeType.HORSE, TransportModeType.FOOT}, OSMAccessPermissions.INHERITED_NO);
-        cycleway.add(TransportModeType.BICYCLE, OSMAccessPermissions.DESIGNATED);
+        cycleway.add(TransportModeType.ACCESS, OSMAccessPermissions.no);
+        cycleway.add(TransportModeType.BICYCLE, OSMAccessPermissions.designated);
 
         TransportModePermissions footway = new TransportModePermissions();
-        footway.add(TransportModeType.ACCESS, OSMAccessPermissions.NO);
-        footway.add(
-            new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
-                TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED,
-                TransportModeType.HORSE, TransportModeType.BICYCLE },
-            OSMAccessPermissions.INHERITED_NO);
-        footway.add(TransportModeType.FOOT, OSMAccessPermissions.DESIGNATED);
+        footway.add(TransportModeType.ACCESS, OSMAccessPermissions.no);
+        footway.add(TransportModeType.FOOT, OSMAccessPermissions.designated);
 
         prepareProperties("motorway", motorwayPermissions);
         prepareProperties(

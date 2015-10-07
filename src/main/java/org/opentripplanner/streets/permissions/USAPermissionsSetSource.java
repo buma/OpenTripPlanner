@@ -36,32 +36,32 @@ public class USAPermissionsSetSource extends CountryPermissionsSetSource impleme
 
         motorwayPermissions.add(
             new TransportModeType[] { TransportModeType.MOPED, TransportModeType.HORSE,
-                TransportModeType.BICYCLE, TransportModeType.FOOT }, OSMAccessPermissions.NO);
+                TransportModeType.BICYCLE, TransportModeType.FOOT }, OSMAccessPermissions.no);
 
 
         TransportModePermissions pedestrian = new TransportModePermissions();
 
         pedestrian.add(new TransportModeType[]{ TransportModeType.FOOT, TransportModeType.BICYCLE},
-            OSMAccessPermissions.YES);
+            OSMAccessPermissions.yes);
 
         TransportModePermissions path = new TransportModePermissions();
 
         path.add(new TransportModeType[] {TransportModeType.MOPED, TransportModeType.HORSE, TransportModeType.BICYCLE,
-            TransportModeType.FOOT }, OSMAccessPermissions.YES);
+            TransportModeType.FOOT }, OSMAccessPermissions.yes);
 
         TransportModePermissions bridleway = new TransportModePermissions();
 
-        bridleway.add(TransportModeType.HORSE, OSMAccessPermissions.DESIGNATED);
-        bridleway.add(new TransportModeType[]{TransportModeType.BICYCLE, TransportModeType.FOOT}, OSMAccessPermissions.YES);
+        bridleway.add(TransportModeType.HORSE, OSMAccessPermissions.designated);
+        bridleway.add(new TransportModeType[]{TransportModeType.BICYCLE, TransportModeType.FOOT}, OSMAccessPermissions.yes);
 
         TransportModePermissions cycleway = new TransportModePermissions();
 
-        cycleway.add(TransportModeType.BICYCLE, OSMAccessPermissions.DESIGNATED);
-        cycleway.add(TransportModeType.FOOT, OSMAccessPermissions.YES);
+        cycleway.add(TransportModeType.BICYCLE, OSMAccessPermissions.designated);
+        cycleway.add(TransportModeType.FOOT, OSMAccessPermissions.yes);
 
         TransportModePermissions footway = new TransportModePermissions();
 
-        footway.add(TransportModeType.FOOT, OSMAccessPermissions.DESIGNATED);
+        footway.add(TransportModeType.FOOT, OSMAccessPermissions.designated);
 
         replaceProperties("motorway", motorwayPermissions);
         //Same as default

@@ -36,16 +36,16 @@ public class PortlandPermissionsSetSource extends USAPermissionsSetSource {
 
         trunkPermissions.add(
             new TransportModeType[] { TransportModeType.MOPED, TransportModeType.HORSE,
-                TransportModeType.BICYCLE, TransportModeType.FOOT }, OSMAccessPermissions.NO);
+                TransportModeType.BICYCLE, TransportModeType.FOOT }, OSMAccessPermissions.no);
 
         TransportModePermissions footway = new TransportModePermissions();
 
-        footway.add(TransportModeType.FOOT, OSMAccessPermissions.DESIGNATED);
-        footway.add(TransportModeType.BICYCLE, OSMAccessPermissions.YES);
+        footway.add(TransportModeType.FOOT, OSMAccessPermissions.designated);
+        footway.add(TransportModeType.BICYCLE, OSMAccessPermissions.yes);
 
         TransportModePermissions sidewalk = new TransportModePermissions();
-        sidewalk.add(TransportModeType.ACCESS, OSMAccessPermissions.NO);
-        sidewalk.add(TransportModeType.FOOT, OSMAccessPermissions.DESIGNATED);
+        sidewalk.add(TransportModeType.ACCESS, OSMAccessPermissions.no);
+        sidewalk.add(TransportModeType.FOOT, OSMAccessPermissions.designated);
 
         replaceProperties("trunk", trunkPermissions);
         replaceProperties("footway", footway);

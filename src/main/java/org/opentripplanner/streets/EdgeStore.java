@@ -232,19 +232,19 @@ public class EdgeStore implements Serializable {
      * @param permissions
      * @return integer which represents set flags
      */
-    public static int getPermissionFlags(EnumMap<TransportModeType, OSMAccessPermissions> permissions) {
+    public static int getPermissionFlags(EnumMap<TransportModeType, Set<OSMAccessPermissions>> permissions) {
         int start = 0;
-        for (final Map.Entry<TransportModeType, OSMAccessPermissions> entry : permissions.entrySet()) {
+        for (final Map.Entry<TransportModeType, Set<OSMAccessPermissions>> entry : permissions.entrySet()) {
             if (transportModeFlag.containsKey(entry.getKey())) {
                 Flag flag = transportModeFlag.get(entry.getKey());
-                if (!(entry.getValue() == OSMAccessPermissions.NO
-                    || entry.getValue() == OSMAccessPermissions.DISMOUNT)) {
+                if (entry.getValue().contains(OSMAccessPermissions.CAN_TRAVERSE)) {
                     start |= flag.flag;
                 }
                 Flag thru_traffic = transportModeNoThruTrafficFlag.get(entry.getKey());
-                if (entry.getValue() == OSMAccessPermissions.PRIVATE || entry.getValue() == OSMAccessPermissions.DESTINATION) {
+                if (entry.getValue().contains(OSMAccessPermissions.NO_THRU_TRAFFIC)) {
                     start |= thru_traffic.flag;
                 }
+                //TODO: add specific destination, designated, etc. tags
             } else {
                 LOG.warn("Unknown transport mode:{}", entry.getKey());
             }

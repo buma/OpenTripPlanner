@@ -35,17 +35,17 @@ public class AustriaPermissionsSetSource extends CountryPermissionsSetSource imp
 
         this.wayPropertySet = wayPropertySet;
         TransportModePermissions living_street = new TransportModePermissions();
-        living_street.add(new TransportModeType[]{TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED}, OSMAccessPermissions.DESTINATION);
+        living_street.add(new TransportModeType[]{TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE, TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED}, OSMAccessPermissions.designated);
         living_street.add(
             new TransportModeType[] { TransportModeType.HORSE, TransportModeType.BICYCLE,
-                TransportModeType.FOOT }, OSMAccessPermissions.YES);
+                TransportModeType.FOOT }, OSMAccessPermissions.yes);
 
         TransportModePermissions cycleway = new TransportModePermissions();
         cycleway.add(
             new TransportModeType[] { TransportModeType.MOTORCAR, TransportModeType.MOTORCYCLE,
                 TransportModeType.HGV, TransportModeType.PSV, TransportModeType.MOPED,
-                TransportModeType.HORSE, TransportModeType.FOOT }, OSMAccessPermissions.NO);
-        cycleway.add(TransportModeType.BICYCLE, OSMAccessPermissions.DESIGNATED);
+                TransportModeType.HORSE, TransportModeType.FOOT }, OSMAccessPermissions.no);
+        cycleway.add(TransportModeType.BICYCLE, OSMAccessPermissions.designated);
 
 
         replaceProperties("living_street", living_street);

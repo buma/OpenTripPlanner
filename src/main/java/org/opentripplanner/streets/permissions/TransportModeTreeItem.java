@@ -14,6 +14,7 @@
 package org.opentripplanner.streets.permissions;
 
 import javax.swing.tree.DefaultMutableTreeNode;
+import java.util.Set;
 
 /**
  * Its a leaf in Transport Model Hierarchy tree.
@@ -23,19 +24,14 @@ import javax.swing.tree.DefaultMutableTreeNode;
  */
 public class TransportModeTreeItem extends DefaultMutableTreeNode {
 
-    public TransportModeTreeItem(TransportModeType transportModeType, OSMAccessPermissions accessPermissions) {
-        super(new TransportModePermission(transportModeType, accessPermissions));
-
-    }
-
     public TransportModeTreeItem(TransportModeType transportModeType) {
-        super(new TransportModePermission(transportModeType, OSMAccessPermissions.UNKNOWN));
+        super(new TransportModePermission(transportModeType));
     }
 
     /**
      * Sets permissions for current leaf
      */
-    public void setPermission(OSMAccessPermissions osmAccessPermissions) {
+    public void setPermission(Set<OSMAccessPermissions> osmAccessPermissions) {
         ((TransportModePermission)this.getUserObject()).setOsmAccessPermissions(
             osmAccessPermissions);
     }
@@ -43,7 +39,7 @@ public class TransportModeTreeItem extends DefaultMutableTreeNode {
     /**
      * @return permission from current leaf it can also be unknown
      */
-    public OSMAccessPermissions getPermission() {
+    public Set<OSMAccessPermissions> getPermission() {
         return ((TransportModePermission)this.getUserObject()).getOsmAccessPermissions();
     }
 
@@ -57,10 +53,14 @@ public class TransportModeTreeItem extends DefaultMutableTreeNode {
     /**
      * Searches for valid permissions from current leaf up the tree until it finds valid one (non unknown)
      */
-    public OSMAccessPermissions getFullPermission() {
-        if (getTransportModeType()==TransportModeType.ACCESS || getPermission() != OSMAccessPermissions.UNKNOWN) {
+    public Set<OSMAccessPermissions> getFullPermission() {
+        if (getTransportModeType()==TransportModeType.ACCESS || !getPermission().contains(OSMAccessPermissions.UNKNOWN)) {
             return getPermission();
         }
         return ((TransportModeTreeItem) getParent()).getFullPermission();
+    }
+
+    public void resetPermission() {
+        ((TransportModePermission)this.getUserObject()).resetOsmAccessPermissions();
     }
 }

@@ -213,7 +213,7 @@ public class StreetLayer implements Serializable {
         int streetMaxSpeedForward = getIntCarSpeedForWay(osmWay, false);
         int streetMaxSpeedBackward = getIntCarSpeedForWay(osmWay, true);
 
-        P2<EnumMap<TransportModeType, OSMAccessPermissions>> permissions = accessRestrictionsAlgorithm
+        P2<EnumMap<TransportModeType, Set<OSMAccessPermissions>>> permissions = accessRestrictionsAlgorithm
         .getPermissions(osmWay);
 
         long beginOsmNodeId = osmWay.nodes[beginIdx];

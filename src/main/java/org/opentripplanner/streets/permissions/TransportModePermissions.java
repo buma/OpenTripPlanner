@@ -13,8 +13,7 @@
 
 package org.opentripplanner.streets.permissions;
 
-import java.util.EnumMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Class saves transport mode permissions for specific highway type(s).
@@ -25,7 +24,7 @@ import java.util.Map;
  */
 public class TransportModePermissions {
 
-    private EnumMap<TransportModeType, OSMAccessPermissions> permissionsEnumMap;
+    private EnumMap<TransportModeType, Set<OSMAccessPermissions>> permissionsEnumMap;
 
     public TransportModePermissions() {
         this.permissionsEnumMap = new EnumMap<>(TransportModeType.class);
@@ -46,7 +45,7 @@ public class TransportModePermissions {
      * @param transportModeType for which transport mode is this permissions
      * @param osmAccessPermissions YES, NO, DESTINATION, INHERITED YES etc
      */
-    public void add(TransportModeType transportModeType, OSMAccessPermissions osmAccessPermissions) {
+    public void add(TransportModeType transportModeType, Set<OSMAccessPermissions> osmAccessPermissions) {
         permissionsEnumMap.put(transportModeType, osmAccessPermissions);
     }
 
@@ -55,9 +54,9 @@ public class TransportModePermissions {
      * @param transportModeTypes for which transport modes is this permissions
      * @param osmAccessPermissions YES, NO, DESTINATION, INHERITED YES etc
      */
-    public void add(TransportModeType[] transportModeTypes, OSMAccessPermissions osmAccessPermissions) {
+    public void add(TransportModeType[] transportModeTypes, Set<OSMAccessPermissions> osmAccessPermissions) {
         for (TransportModeType transportModeType: transportModeTypes) {
-            permissionsEnumMap.put(transportModeType, osmAccessPermissions);
+            add(transportModeType, osmAccessPermissions);
         }
     }
 
@@ -71,13 +70,11 @@ public class TransportModePermissions {
     /**
      * @return map of all transportModeTypes and permissions which aren't INHERITED_*
      */
-    public EnumMap<TransportModeType, OSMAccessPermissions> getNonInheritedPermissions() {
-        EnumMap<TransportModeType, OSMAccessPermissions> nonInheritedMap = new EnumMap<>(TransportModeType.class);
+    public EnumMap<TransportModeType, Set<OSMAccessPermissions>> getNonInheritedPermissions() {
+        EnumMap<TransportModeType, Set<OSMAccessPermissions>> nonInheritedMap = new EnumMap<>(TransportModeType.class);
 
-        for (Map.Entry<TransportModeType, OSMAccessPermissions> map: permissionsEnumMap.entrySet()) {
-            if (!(map.getValue() == OSMAccessPermissions.INHERITED_DESIGNATED
-                || map.getValue() == OSMAccessPermissions.INHERITED_NO
-                || map.getValue() == OSMAccessPermissions.INHERITED_YES)) {
+        for (Map.Entry<TransportModeType, Set<OSMAccessPermissions>> map: permissionsEnumMap.entrySet()) {
+            if (Collections.disjoint(map.getValue(), OSMAccessPermissions.inherited_any)) {
                 nonInheritedMap.put(map.getKey(), map.getValue());
             }
         }
@@ -94,7 +91,7 @@ public class TransportModePermissions {
      * @param oldTransportModePermissions Default Transport mode permissions which are overridden if they exists in current.
      */
     public void fromOld(TransportModePermissions oldTransportModePermissions) {
-        for (Map.Entry<TransportModeType, OSMAccessPermissions> oldModePermissions: oldTransportModePermissions.permissionsEnumMap.entrySet()) {
+        for (Map.Entry<TransportModeType, Set<OSMAccessPermissions>> oldModePermissions: oldTransportModePermissions.permissionsEnumMap.entrySet()) {
             if (!permissionsEnumMap.containsKey(oldModePermissions.getKey())) {
                 permissionsEnumMap.put(oldModePermissions.getKey(), oldModePermissions.getValue());
             }
