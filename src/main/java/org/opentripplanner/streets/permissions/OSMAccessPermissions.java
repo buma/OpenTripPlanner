@@ -34,7 +34,7 @@ public enum OSMAccessPermissions {
     // DESTINATION, DELIVERY, PRIVATE this all have CAN_TRAVERSE (DESTINATION, DELIVERY, PRIVATE also have NO_THRU_TRAFFIC)
     CAN_TRAVERSE,
     //NO, DISMOUNT, EMERGENCY, restricted, prohibited, license, false, 0 has CANNOT_TRAVERSE and aren't routable
-    CANNOT_TRAVERSE;
+    CANNOT_TRAVERSE, USE_SIDEPATH;
 
 
     /**
@@ -107,6 +107,7 @@ public enum OSMAccessPermissions {
     public static final Set<OSMAccessPermissions> no = Sets.immutableEnumSet(NO, CANNOT_TRAVERSE);
     public static final Set<OSMAccessPermissions> inherited_any = Sets.immutableEnumSet(
         INHERITED_DESIGNATED, INHERITED_NO, INHERITED_YES);
+    public static final Set<OSMAccessPermissions> sidepath = Sets.immutableEnumSet(CANNOT_TRAVERSE, USE_SIDEPATH);
 
     public static EnumSet<OSMAccessPermissions> mutable_no() {
         return EnumSet.copyOf(no);

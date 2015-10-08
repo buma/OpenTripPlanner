@@ -125,7 +125,7 @@ public class AccessRestrictionsAlgorithm {
             TransportModeType transportModeType = TransportModeType.valueOf(
                 tag.key.toUpperCase(Locale.ENGLISH));
             if (transportModeType == TransportModeType.BICYCLE && tag.value.toLowerCase().equals("use_sidepath")) {
-                specificPermissions.put(transportModeType, EnumSet.of(OSMAccessPermissions.NO, OSMAccessPermissions.CANNOT_TRAVERSE));
+                specificPermissions.put(transportModeType, OSMAccessPermissions.sidepath);
                 continue;
             }
             try {
@@ -202,12 +202,12 @@ public class AccessRestrictionsAlgorithm {
         //removes bicycle permission when bicycles need to use sidepath
         //TAG: bicycle:forward=use_sidepath
         if (way.isForwardDirectionSidepath()) {
-            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.no);
+            permissionsFront.replace(TransportModeType.BICYCLE, OSMAccessPermissions.sidepath);
         }
 
         //TAG bicycle:backward=use_sidepath
         if (way.isReverseDirectionSidepath()) {
-            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.no);
+            permissionsBack.replace(TransportModeType.BICYCLE, OSMAccessPermissions.sidepath);
         }
 
         if (way.isOpposableCycleway()) {
