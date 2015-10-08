@@ -60,7 +60,7 @@ public enum OSMAccessPermissions {
             || "forestry".equals(access)  || "agricultural".equals(access)
             || "residents".equals(access) || "resident".equals(access)
             || "customer".equals(access)
-            || "private".equals(access) || "permissive".equals(access);
+            || "private".equals(access) ;
         if (destination) {
             returnset = EnumSet.of(NO_THRU_TRAFFIC, CAN_TRAVERSE);
 
@@ -78,8 +78,6 @@ public enum OSMAccessPermissions {
                 returnset.add(DELIVERY);
             } else if ("private".equals(access)) {
                 returnset.add(PRIVATE);
-            } else if ("permissive".equals(access)) {
-                returnset.add(PERMISSIVE);
             }
             return returnset;
         }
@@ -97,7 +95,7 @@ public enum OSMAccessPermissions {
         returnset = EnumSet.of(valueOf(access.toUpperCase(Locale.ENGLISH)));
         if (returnset.contains(DISMOUNT)) {
             returnset.add(CANNOT_TRAVERSE);
-        } else if (returnset.contains(DESIGNATED)) {
+        } else if (returnset.contains(DESIGNATED) || returnset.contains(PERMISSIVE)) {
             returnset.add(CAN_TRAVERSE);
         }
         return returnset;
