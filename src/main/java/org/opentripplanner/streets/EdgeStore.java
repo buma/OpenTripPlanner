@@ -698,6 +698,13 @@ public class EdgeStore implements Serializable {
         void setFlags(int _flags) {
             flags.set(edgeIndex, _flags);
         }
+        /**
+         * @return true if any mode of transport is no thru traffic
+         */
+        public boolean isNoThruTraffic() {
+            return getFlag(Flag.NO_THRU_TRAFFIC_CAR) || getFlag(Flag.NO_THRU_TRAFFIC_PEDESTRIAN) ||
+                getFlag(Flag.NO_THRU_TRAFFIC_BIKE);
+        }
     }
 
     public Edge getCursor() {

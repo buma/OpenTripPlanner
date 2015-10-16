@@ -28,6 +28,7 @@ public class TileRendererManager {
         // Register layers
         renderers.put("max-speed", new EdgeVertexTileRenderer(new MaxSpeedEdgeRenderer()));
         renderers.put("traversal", new EdgeVertexTileRenderer(new TraversalPermissionEdgeRender()));
+        renderers.put("no-thru", new EdgeVertexTileRenderer(new NoThruTrafficPermissionEdgeRender()));
     }
 
     public BufferedImage renderTile(final TileRequest tileRequest, String layer) {
