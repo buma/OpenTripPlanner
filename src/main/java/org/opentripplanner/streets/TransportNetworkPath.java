@@ -13,6 +13,7 @@
 
 package org.opentripplanner.streets;
 
+import org.opentripplanner.routing.error.PathNotFoundException;
 import org.opentripplanner.transit.TransportNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,10 @@ public class TransportNetworkPath {
     //TODO maybe we'll need also optimize parameter or at least a parameter to tell if we route arrive by or depart from
 
     public TransportNetworkPath(StreetRouter.State s, TransportNetwork transportNetwork, boolean arriveBy) {
+        //FIXME: temporary
+        if (s == null) {
+            throw new PathNotFoundException();
+        }
         this.transportNetwork = transportNetwork;
         this.lastWeight = s.weight;
         edges = new LinkedList<>();
