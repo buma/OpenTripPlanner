@@ -129,17 +129,11 @@ public class TransportNetworkFinder {
         List<TransportNetworkPath> paths = Lists.newArrayList();
         StreetRouter streetRouter = new StreetRouter(options);
         streetRouter.setOrigin(options.getTransportContext().origin, options);
-        streetRouter.toVertex = options.getTransportContext().target.vertex0;
         streetRouter.route();
-        TransportNetworkPath first = new TransportNetworkPath(streetRouter.getLastState(), router.transportNetwork, options.arriveBy);
-        //paths.add(first);
-        //streetRouter.setOrigin(ctx.origin, options);
-        streetRouter.toVertex = options.getTransportContext().target.vertex1;
-        streetRouter.route();
-        TransportNetworkPath second = new TransportNetworkPath(streetRouter.getLastState(), router.transportNetwork, options.arriveBy);
+        TransportNetworkPath first = new TransportNetworkPath(streetRouter.getState(options.getTransportContext().target.vertex0), router.transportNetwork, options.arriveBy);
+        TransportNetworkPath second = new TransportNetworkPath(streetRouter.getState(options.getTransportContext().target.vertex1), router.transportNetwork, options.arriveBy);
 
         //TODO: TransportNetworkPath needs to reverse path if arriveBy is true. Otherwise path is in reverse
-        //paths.add(second);
         LOG.info("First:{}, Second:{}", first.getlastWeight(), second.getlastWeight());
         if (second.getlastWeight() < first.getlastWeight()) {
             paths.add(second);

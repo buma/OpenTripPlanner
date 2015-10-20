@@ -14,6 +14,7 @@ import org.opentripplanner.transit.TransportNetwork;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -56,6 +57,19 @@ public class StreetRouter {
 
     public State getLastState() {
         return lastState;
+    }
+
+    /**
+     * Returns state of that vertex if it exists
+     * @param vertexIndex
+     * @return
+     */
+    @Nullable
+    public State getState(int vertexIndex) {
+        if (bestStates == null) {
+            return null;
+        }
+        return bestStates.get(vertexIndex);
     }
 
     //Last state when target vertex was found
